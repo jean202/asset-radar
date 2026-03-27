@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: asset-radar
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
