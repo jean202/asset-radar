@@ -1,6 +1,65 @@
 spring:
   application:
     name: asset-radar
+  kafka:
+    bootstrap-servers: localhost:9092
+    admin:
+      auto-create: true
+      fail-fast: false
+    consumer:
+      group-id: asset-radar
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+  data:
+    redis:
+      host: localhost
+      port: 6380
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5433/asset_radar
+    username: asset_radar
+    password: asset_radar
+
+asset-radar:
+  coin:
+    enabled: true
+    websocket-url: wss://api.upbit.com/websocket/v1
+    symbols:
+      - KRW-BTC
+      - KRW-ETH
+  pipeline:
+    kafka-topic: asset.coin.realtime
+    analysis-kafka-topic: asset.coin.analysis
+    redis-key-prefix: asset:latest
+    analysis-redis-key-prefix: analysis:latest
+    alert-redis-key-prefix: alert:latest
+    redis-ttl: 6h
+  alert:
+    window: 1m
+    info-change-rate-threshold: 0.005
+    warn-change-rate-threshold: 0.01
+    critical-change-rate-threshold: 0.02
+    notifier:
+      async:
+        core-pool-size: 2
+        max-pool-size: 4
+        queue-capacity: 200
+      slack:
+        enabled: false
+        minimum-severity: CRITICAL
+        webhook-url: ${ASSET_RADAR_ALERT_SLACK_WEBHOOK_URL:}
+        timeout: 3s
+      webhook:
+        enabled: false
+        minimum-severity: WARN
+        url: ${ASSET_RADAR_ALERT_WEBHOOK_URL:}
+        auth-token: ${ASSET_RADAR_ALERT_WEBHOOK_AUTH_TOKEN:}
+        timeout: 3s
 
 management:
   endpoints:
