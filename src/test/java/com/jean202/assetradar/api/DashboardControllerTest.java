@@ -2,6 +2,7 @@ package com.jean202.assetradar.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.jean202.assetradar.config.DashboardProperties;
 import com.jean202.assetradar.domain.AssetPrice;
 import com.jean202.assetradar.pipeline.AssetPriceStore;
 import com.jean202.assetradar.query.DashboardHistoryMetrics;
@@ -9,6 +10,8 @@ import com.jean202.assetradar.query.DashboardHistoryMetricsReader;
 import com.jean202.assetradar.query.LatestAssetPriceReader;
 import com.jean202.assetradar.query.LatestAssetQuery;
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,29 +32,115 @@ class DashboardControllerTest {
         assetPriceStore = new AssetPriceStore();
         latestReader = new RecordingLatestReader();
         historyMetricsReader = new RecordingHistoryMetricsReader();
-        controller = new DashboardController(assetPriceStore, latestReader, historyMetricsReader);
+        DashboardProperties dashboardProperties = new DashboardProperties();
+        controller = new DashboardController(
+                assetPriceStore,
+                latestReader,
+                historyMetricsReader,
+                dashboardProperties,
+                Clock.fixed(Instant.parse("2026-03-30T08:16:00Z"), java.time.ZoneOffset.UTC)
+        );
     }
 
     @Test
     void returnsLiveSnapshotWhenPriceExists() {
-        AssetPrice price = new AssetPrice(
-                "BTC",
-                "KRW",
-                "UPBIT",
-                new BigDecimal("137500000"),
-                new BigDecimal("0.023"),
-                Instant.parse("2026-03-30T08:15:30Z")
+        latestReader.prices = List.of(
+                assetPrice("XAU", "USD", "GOLDAPI", "4674.399902", "0.00000000", "2026-03-30T08:14:30Z"),
+                assetPrice("ETH", "KRW", "UPBIT", "5120000", "-0.008", "2026-03-30T08:15:31Z"),
+                assetPrice("BTC", "KRW", "UPBIT", "137500000", "0.023", "2026-03-30T08:15:30Z")
         );
-        latestReader.prices = List.of(price);
         historyMetricsReader.metrics = new DashboardHistoryMetrics(42, Instant.parse("2026-03-30T08:15:30Z"));
 
         DashboardResponse response = controller.dashboard().block();
 
         assertThat(response).isNotNull();
         assertThat(response.status()).isEqualTo("live");
-        assertThat(response.assetCount()).isEqualTo(1);
+        assertThat(response.assetCount()).isEqualTo(3);
         assertThat(response.historyRowCount()).isEqualTo(42);
-        assertThat(response.assets()).extracting(AssetPrice::symbol).containsExactly("BTC");
+        assertThat(response.assets())
+                .extracting(price -> "%s:%s".formatted(price.source(), price.symbol()))
+                .containsExactly("GOLDAPI:XAU", "UPBIT:BTC", "UPBIT:ETH");
+        assertThat(response.sourceGroups())
+                .extracting(DashboardSourceGroup::source)
+                .containsExactly("GOLDAPI", "UPBIT");
+        assertThat(response.sourceGroups())
+                .extracting(DashboardSourceGroup::sourceDisplayName)
+                .containsExactly("Gold API", "업비트");
+        assertThat(response.sourceGroups())
+                .extracting(DashboardSourceGroup::assetType)
+                .containsExactly("GOLD", "COIN");
+        assertThat(response.sourceGroups())
+                .extracting(DashboardSourceGroup::assetTypeLabel)
+                .containsExactly("금", "코인");
+        assertThat(response.sourceGroups())
+                .extracting(DashboardSourceGroup::stale)
+                .containsExactly(false, false);
+        assertThat(response.sourceGroups())
+                .extracting(DashboardSourceGroup::lastUpdatedAgo)
+                .containsExactly("1m ago", "29s ago");
+        assertThat(response.sourceGroups())
+                .extracting(DashboardSourceGroup::assetCount)
+                .containsExactly(1, 2);
+        assertThat(response.sourceGroups().get(1).assets())
+                .extracting(AssetPrice::symbol)
+                .containsExactly("BTC", "ETH");
+    }
+
+    @Test
+    void usesFallbackMetadataForUnknownSource() {
+        latestReader.prices = List.of(
+                assetPrice("FOO", "USD", "CUSTOMFEED", "100.00", "0.00000000", "2026-03-30T08:14:30Z")
+        );
+
+        DashboardResponse response = controller.dashboard().block();
+
+        assertThat(response).isNotNull();
+        assertThat(response.sourceGroups()).hasSize(1);
+        assertThat(response.sourceGroups().get(0).source()).isEqualTo("CUSTOMFEED");
+        assertThat(response.sourceGroups().get(0).sourceDisplayName()).isEqualTo("CUSTOMFEED");
+        assertThat(response.sourceGroups().get(0).assetType()).isEqualTo("UNKNOWN");
+        assertThat(response.sourceGroups().get(0).assetTypeLabel()).isEqualTo("기타");
+        assertThat(response.sourceGroups().get(0).stale()).isFalse();
+        assertThat(response.sourceGroups().get(0).lastUpdatedAgeSeconds()).isEqualTo(90);
+        assertThat(response.sourceGroups().get(0).lastUpdatedAgo()).isEqualTo("1m ago");
+    }
+
+    @Test
+    void marksSourceAsStaleWhenUpdateIsTooOld() {
+        latestReader.prices = List.of(
+                assetPrice("BTC", "KRW", "UPBIT", "137500000", "0.023", "2026-03-30T08:14:30Z")
+        );
+
+        DashboardResponse response = controller.dashboard().block();
+
+        assertThat(response).isNotNull();
+        assertThat(response.sourceGroups()).hasSize(1);
+        assertThat(response.sourceGroups().get(0).stale()).isTrue();
+        assertThat(response.sourceGroups().get(0).lastUpdatedAgeSeconds()).isEqualTo(90);
+        assertThat(response.sourceGroups().get(0).lastUpdatedAgo()).isEqualTo("1m ago");
+    }
+
+    @Test
+    void usesConfiguredStaleThresholdOverride() {
+        latestReader.prices = List.of(
+                assetPrice("BTC", "KRW", "UPBIT", "137500000", "0.023", "2026-03-30T08:14:30Z")
+        );
+        DashboardProperties dashboardProperties = new DashboardProperties();
+        dashboardProperties.getStaleThresholds().put("UPBIT", Duration.ofMinutes(2));
+        controller = new DashboardController(
+                assetPriceStore,
+                latestReader,
+                historyMetricsReader,
+                dashboardProperties,
+                Clock.fixed(Instant.parse("2026-03-30T08:16:00Z"), java.time.ZoneOffset.UTC)
+        );
+
+        DashboardResponse response = controller.dashboard().block();
+
+        assertThat(response).isNotNull();
+        assertThat(response.sourceGroups()).hasSize(1);
+        assertThat(response.sourceGroups().get(0).stale()).isFalse();
+        assertThat(response.sourceGroups().get(0).lastUpdatedAgeSeconds()).isEqualTo(90);
     }
 
     @Test
@@ -64,6 +153,7 @@ class DashboardControllerTest {
         assertThat(response.status()).isEqualTo("degraded");
         assertThat(response.assetCount()).isEqualTo(0);
         assertThat(response.historyUpdatedAt()).isEqualTo(Instant.parse("2026-03-30T08:00:00Z"));
+        assertThat(response.sourceGroups()).isEmpty();
     }
 
     @Test
@@ -107,5 +197,23 @@ class DashboardControllerTest {
         public Mono<DashboardHistoryMetrics> readMetrics() {
             return Mono.just(metrics);
         }
+    }
+
+    private AssetPrice assetPrice(
+            String symbol,
+            String quoteCurrency,
+            String source,
+            String price,
+            String signedChangeRate,
+            String collectedAt
+    ) {
+        return new AssetPrice(
+                symbol,
+                quoteCurrency,
+                source,
+                new BigDecimal(price),
+                new BigDecimal(signedChangeRate),
+                Instant.parse(collectedAt)
+        );
     }
 }

@@ -32,13 +32,29 @@ asset-radar:
     symbols:
       - KRW-BTC
       - KRW-ETH
+  gold:
+    enabled: true
+    base-url: https://api.gold-api.com
+    symbol: XAU
+    refresh-interval: 5m
+    source: GOLDAPI
   pipeline:
-    kafka-topic: asset.coin.realtime
-    analysis-kafka-topic: asset.coin.analysis
+    kafka-topic: asset.price.realtime
+    analysis-kafka-topic: asset.price.analysis
     redis-key-prefix: asset:latest
     analysis-redis-key-prefix: analysis:latest
     alert-redis-key-prefix: alert:latest
     redis-ttl: 6h
+  dashboard:
+    default-stale-threshold: 10m
+    stale-thresholds:
+      UPBIT: 30s
+      BINANCE: 30s
+      GOLDAPI: 15m
+      KIS: 1m
+      KOREAINVESTMENT: 1m
+      ALPHAVANTAGE: 20m
+      FINNHUB: 20m
   alert:
     window: 1m
     info-change-rate-threshold: 0.005

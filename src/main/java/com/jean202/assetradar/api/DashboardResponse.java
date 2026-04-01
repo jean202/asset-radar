@@ -10,6 +10,7 @@ public record DashboardResponse(
         int assetCount,
         long historyRowCount,
         Instant historyUpdatedAt,
-        List<AssetPrice> assets
+        List<AssetPrice> assets,
+        List<DashboardSourceGroup> sourceGroups
 ) {
 }

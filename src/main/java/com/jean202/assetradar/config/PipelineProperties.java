@@ -5,8 +5,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "asset-radar.pipeline")
 public class PipelineProperties {
-    private String kafkaTopic = "asset.coin.realtime";
-    private String analysisKafkaTopic = "asset.coin.analysis";
+    private String kafkaTopic = "asset.price.realtime";
+    private String analysisKafkaTopic = "asset.price.analysis";
     private String redisKeyPrefix = "asset:latest";
     private String analysisRedisKeyPrefix = "analysis:latest";
     private String alertRedisKeyPrefix = "alert:latest";
