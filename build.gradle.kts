@@ -23,6 +23,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-redis-reactive")
     implementation("org.springframework.boot:spring-boot-starter-data-r2dbc")
     implementation("org.springframework.kafka:spring-kafka")
+    implementation("org.springdoc:springdoc-openapi-starter-webflux-ui:2.8.6")
 
     runtimeOnly("org.postgresql:r2dbc-postgresql")
     runtimeOnly("io.micrometer:micrometer-registry-prometheus")

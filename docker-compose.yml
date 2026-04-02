@@ -1,4 +1,23 @@
 services:
+  app:
+    build: .
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_R2DBC_URL: r2dbc:postgresql://postgres:5432/asset_radar
+      SPRING_R2DBC_USERNAME: asset_radar
+      SPRING_R2DBC_PASSWORD: asset_radar
+      ASSET_RADAR_KIS_APP_KEY: ${ASSET_RADAR_KIS_APP_KEY:-}
+      ASSET_RADAR_KIS_APP_SECRET: ${ASSET_RADAR_KIS_APP_SECRET:-}
+      ASSET_RADAR_ALPHAVANTAGE_API_KEY: ${ASSET_RADAR_ALPHAVANTAGE_API_KEY:-}
+    ports:
+      - "8081:8080"
+    depends_on:
+      - kafka
+      - redis
+      - postgres
+
   kafka:
     image: confluentinc/cp-kafka:8.1.2
     environment:
@@ -39,8 +58,8 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
       - "9090:9090"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    depends_on:
+      - app
 
   grafana:
     image: grafana/grafana:11.5.2

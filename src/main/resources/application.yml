@@ -96,6 +96,13 @@ asset-radar:
         auth-token: ${ASSET_RADAR_ALERT_WEBHOOK_AUTH_TOKEN:}
         timeout: 3s
 
+springdoc:
+  info:
+    title: Asset Radar API
+    description: 실시간 자산 가격 수집·분석·알림 플랫폼
+    version: ${project.version:0.1.0-SNAPSHOT}
+  show-actuator: false
+
 management:
   endpoints:
     web:
