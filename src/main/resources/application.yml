@@ -32,6 +32,25 @@ asset-radar:
     symbols:
       - KRW-BTC
       - KRW-ETH
+  stock-kr:
+    enabled: true
+    base-url: https://openapi.koreainvestment.com:9443
+    app-key: ${ASSET_RADAR_KIS_APP_KEY:}
+    app-secret: ${ASSET_RADAR_KIS_APP_SECRET:}
+    refresh-interval: 3s
+    symbols:
+      - "005930"
+      - "000660"
+    source: KIS
+  stock-us:
+    enabled: true
+    base-url: https://www.alphavantage.co
+    api-key: ${ASSET_RADAR_ALPHAVANTAGE_API_KEY:}
+    refresh-interval: 1m
+    symbols:
+      - AAPL
+      - NVDA
+    source: ALPHAVANTAGE
   gold:
     enabled: true
     base-url: https://api.gold-api.com
