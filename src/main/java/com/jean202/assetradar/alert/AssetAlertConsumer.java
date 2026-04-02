@@ -3,6 +3,8 @@ package com.jean202.assetradar.alert;
 import com.jean202.assetradar.config.AlertProperties;
 import com.jean202.assetradar.domain.AssetAlert;
 import com.jean202.assetradar.domain.AssetAnalysis;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayDeque;
@@ -25,6 +27,8 @@ public class AssetAlertConsumer {
     private final AssetAlertRuleEngine assetAlertRuleEngine;
     private final List<AssetAlertSink> sinks;
     private final AssetAlertNotificationDispatcher notificationDispatcher;
+    private final Counter alertsTriggeredCounter;
+    private final Counter alertsEvaluatedCounter;
     private final ConcurrentMap<String, AlertFingerprint> latestAlerts = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, Deque<PriceWindowEntry>> priceWindows = new ConcurrentHashMap<>();
 
@@ -32,12 +36,19 @@ public class AssetAlertConsumer {
             AlertProperties alertProperties,
             AssetAlertRuleEngine assetAlertRuleEngine,
             List<AssetAlertSink> sinks,
-            AssetAlertNotificationDispatcher notificationDispatcher
+            AssetAlertNotificationDispatcher notificationDispatcher,
+            MeterRegistry meterRegistry
     ) {
         this.alertProperties = alertProperties;
         this.assetAlertRuleEngine = assetAlertRuleEngine;
         this.sinks = sinks;
         this.notificationDispatcher = notificationDispatcher;
+        this.alertsTriggeredCounter = Counter.builder("asset.alerts.triggered")
+                .description("Number of alerts triggered")
+                .register(meterRegistry);
+        this.alertsEvaluatedCounter = Counter.builder("asset.alerts.evaluated")
+                .description("Number of alert evaluations performed")
+                .register(meterRegistry);
     }
 
     @KafkaListener(
@@ -46,6 +57,7 @@ public class AssetAlertConsumer {
             containerFactory = "assetAnalysisKafkaListenerContainerFactory"
     )
     public void consume(AssetAnalysis analysis) {
+        alertsEvaluatedCounter.increment();
         String key = keyOf(analysis);
         Optional<AssetAlert> candidate = evaluateWindowAlert(key, analysis);
 
@@ -60,6 +72,8 @@ public class AssetAlertConsumer {
         if (nextFingerprint.equals(previousFingerprint)) {
             return;
         }
+
+        alertsTriggeredCounter.increment();
 
         for (AssetAlertSink sink : sinks) {
             try {

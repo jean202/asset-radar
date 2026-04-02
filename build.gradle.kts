@@ -25,6 +25,7 @@ dependencies {
     implementation("org.springframework.kafka:spring-kafka")
 
     runtimeOnly("org.postgresql:r2dbc-postgresql")
+    runtimeOnly("io.micrometer:micrometer-registry-prometheus")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("io.projectreactor:reactor-test")

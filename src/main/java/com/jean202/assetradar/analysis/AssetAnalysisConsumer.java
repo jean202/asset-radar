@@ -2,6 +2,8 @@ package com.jean202.assetradar.analysis;
 
 import com.jean202.assetradar.domain.AssetAnalysis;
 import com.jean202.assetradar.domain.AssetPrice;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -17,14 +19,19 @@ public class AssetAnalysisConsumer {
 
     private final AssetAnalysisCalculator assetAnalysisCalculator;
     private final List<AssetAnalysisSink> sinks;
+    private final Counter analysisCounter;
     private final ConcurrentMap<String, AssetPrice> latestPrices = new ConcurrentHashMap<>();
 
     public AssetAnalysisConsumer(
             AssetAnalysisCalculator assetAnalysisCalculator,
-            List<AssetAnalysisSink> sinks
+            List<AssetAnalysisSink> sinks,
+            MeterRegistry meterRegistry
     ) {
         this.assetAnalysisCalculator = assetAnalysisCalculator;
         this.sinks = sinks;
+        this.analysisCounter = Counter.builder("asset.analysis.processed")
+                .description("Number of price analyses performed")
+                .register(meterRegistry);
     }
 
     @KafkaListener(
@@ -35,6 +42,7 @@ public class AssetAnalysisConsumer {
     public void consume(AssetPrice price) {
         AssetPrice previousPrice = latestPrices.put(keyOf(price), price);
         AssetAnalysis analysis = assetAnalysisCalculator.analyze(previousPrice, price);
+        analysisCounter.increment();
 
         for (AssetAnalysisSink sink : sinks) {
             try {

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jean202.assetradar.collector.AssetCollector;
 import com.jean202.assetradar.domain.AssetPrice;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -33,7 +34,8 @@ class CollectorPipelineTest {
                 List.of(new StaticCollector(price)),
                 new AnalysisProcessor(),
                 store,
-                List.of(kafkaSink, redisSink, postgresSink)
+                List.of(kafkaSink, redisSink, postgresSink),
+                new SimpleMeterRegistry()
         );
 
         pipeline.start();
@@ -63,7 +65,8 @@ class CollectorPipelineTest {
                 List.of(new StaticCollector(price)),
                 new AnalysisProcessor(),
                 store,
-                List.of(new FailingSink(), redisSink)
+                List.of(new FailingSink(), redisSink),
+                new SimpleMeterRegistry()
         );
 
         pipeline.start();

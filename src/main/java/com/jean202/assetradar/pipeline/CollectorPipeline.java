@@ -2,6 +2,8 @@ package com.jean202.assetradar.pipeline;
 
 import com.jean202.assetradar.collector.AssetCollector;
 import com.jean202.assetradar.domain.AssetPrice;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.util.ArrayList;
@@ -21,18 +23,21 @@ public class CollectorPipeline {
     private final AnalysisProcessor analysisProcessor;
     private final AssetPriceStore assetPriceStore;
     private final List<AssetPriceSink> sinks;
+    private final MeterRegistry meterRegistry;
     private final List<Disposable> subscriptions = new ArrayList<>();
 
     public CollectorPipeline(
             List<AssetCollector> collectors,
             AnalysisProcessor analysisProcessor,
             AssetPriceStore assetPriceStore,
-            List<AssetPriceSink> sinks
+            List<AssetPriceSink> sinks,
+            MeterRegistry meterRegistry
     ) {
         this.collectors = collectors;
         this.analysisProcessor = analysisProcessor;
         this.assetPriceStore = assetPriceStore;
         this.sinks = sinks;
+        this.meterRegistry = meterRegistry;
     }
 
     @PostConstruct
@@ -48,12 +53,26 @@ public class CollectorPipeline {
     private void subscribe(AssetCollector collector) {
         log.info("Starting collector {}", collector.sourceName());
 
+        Counter priceCounter = Counter.builder("asset.collector.prices")
+                .tag("source", collector.sourceName())
+                .description("Number of prices collected")
+                .register(meterRegistry);
+
+        Counter errorCounter = Counter.builder("asset.collector.errors")
+                .tag("source", collector.sourceName())
+                .description("Number of collector errors")
+                .register(meterRegistry);
+
         Disposable subscription = analysisProcessor.passThrough(collector.collect())
+                .doOnNext(price -> priceCounter.increment())
                 .concatMap(this::dispatch)
                 .subscribe(
                         unused -> {
                         },
-                        error -> log.error("Collector {} stopped with an error", collector.sourceName(), error)
+                        error -> {
+                            errorCounter.increment();
+                            log.error("Collector {} stopped with an error", collector.sourceName(), error);
+                        }
                 );
 
         subscriptions.add(subscription);

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.jean202.assetradar.config.AlertProperties;
 import com.jean202.assetradar.domain.AssetAlert;
 import com.jean202.assetradar.domain.AssetAnalysis;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -22,7 +23,8 @@ class AssetAlertConsumerTest {
                 alertProperties,
                 new AssetAlertRuleEngine(alertProperties),
                 List.of(sink),
-                new AssetAlertNotificationDispatcher(List.of(notifier), Runnable::run)
+                new AssetAlertNotificationDispatcher(List.of(notifier), Runnable::run),
+                new SimpleMeterRegistry()
         );
 
         consumer.consume(analysis("BTC", "100", "2026-03-31T00:00:00Z"));
@@ -46,7 +48,8 @@ class AssetAlertConsumerTest {
                 alertProperties,
                 new AssetAlertRuleEngine(alertProperties),
                 List.of(sink),
-                new AssetAlertNotificationDispatcher(List.of(notifier), Runnable::run)
+                new AssetAlertNotificationDispatcher(List.of(notifier), Runnable::run),
+                new SimpleMeterRegistry()
         );
 
         consumer.consume(analysis("BTC", "100", "2026-03-31T00:00:00Z"));
@@ -67,7 +70,8 @@ class AssetAlertConsumerTest {
                 alertProperties,
                 new AssetAlertRuleEngine(alertProperties),
                 List.of(sink),
-                new AssetAlertNotificationDispatcher(List.of(new FailingNotifier()), Runnable::run)
+                new AssetAlertNotificationDispatcher(List.of(new FailingNotifier()), Runnable::run),
+                new SimpleMeterRegistry()
         );
 
         consumer.consume(analysis("BTC", "100", "2026-03-31T00:00:00Z"));

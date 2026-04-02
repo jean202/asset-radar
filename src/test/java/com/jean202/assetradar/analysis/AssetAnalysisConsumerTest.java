@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jean202.assetradar.domain.AssetAnalysis;
 import com.jean202.assetradar.domain.AssetPrice;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -15,7 +16,7 @@ class AssetAnalysisConsumerTest {
     @Test
     void consumesPricesAndPersistsAnalysis() {
         RecordingSink sink = new RecordingSink();
-        AssetAnalysisConsumer consumer = new AssetAnalysisConsumer(new AssetAnalysisCalculator(), List.of(sink));
+        AssetAnalysisConsumer consumer = new AssetAnalysisConsumer(new AssetAnalysisCalculator(), List.of(sink), new SimpleMeterRegistry());
 
         consumer.consume(assetPrice("BTC", "100", "2026-03-31T00:00:00Z"));
         consumer.consume(assetPrice("BTC", "105", "2026-03-31T00:00:01Z"));
