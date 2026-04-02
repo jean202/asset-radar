@@ -18,6 +18,13 @@ services:
       - redis
       - postgres
 
+  frontend:
+    build: ./frontend
+    ports:
+      - "3001:80"
+    depends_on:
+      - app
+
   kafka:
     image: confluentinc/cp-kafka:8.1.2
     environment:
