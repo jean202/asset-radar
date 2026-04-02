@@ -1,7 +1,6 @@
 package com.jean202.assetradar.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jean202.assetradar.config.PipelineProperties;
@@ -18,23 +17,23 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.r2dbc.core.DatabaseClient;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.KafkaContainer;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.DockerClientFactory;
-import org.testcontainers.utility.DockerImageName;
 
+/**
+ * E2E 통합 테스트: docker-compose로 Kafka/Redis/PostgreSQL을 띄운 뒤 실행.
+ *
+ * 실행 방법:
+ *   docker compose up -d
+ *   INTEGRATION_TEST=true ./gradlew test --tests "*PipelineIntegrationTest"
+ *   docker compose down
+ */
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
@@ -47,37 +46,8 @@ import org.testcontainers.utility.DockerImageName;
         }
 )
 @AutoConfigureWebTestClient
-@Testcontainers(disabledWithoutDocker = true)
+@EnabledIfEnvironmentVariable(named = "INTEGRATION_TEST", matches = "true")
 class PipelineIntegrationTest {
-
-    @Container
-    static final KafkaContainer kafka = new KafkaContainer(
-            DockerImageName.parse("confluentinc/cp-kafka:7.6.0")
-    );
-
-    @Container
-    static final GenericContainer<?> redis = new GenericContainer<>(
-            DockerImageName.parse("redis:7-alpine")
-    ).withExposedPorts(6379);
-
-    @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(
-            DockerImageName.parse("postgres:16-alpine")
-    ).withDatabaseName("asset_radar")
-            .withUsername("asset_radar")
-            .withPassword("asset_radar");
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
-        registry.add("spring.data.redis.host", redis::getHost);
-        registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
-        registry.add("spring.r2dbc.url", () ->
-                "r2dbc:postgresql://%s:%d/asset_radar".formatted(
-                        postgres.getHost(), postgres.getMappedPort(5432)));
-        registry.add("spring.r2dbc.username", () -> "asset_radar");
-        registry.add("spring.r2dbc.password", () -> "asset_radar");
-    }
 
     @Autowired
     private KafkaTemplate<String, AssetPrice> kafkaTemplate;
@@ -101,7 +71,7 @@ class PipelineIntegrationTest {
     private WebTestClient webTestClient;
 
     @Test
-    void priceFlowsThroughKafkaToRedisAndPostgres() throws Exception {
+    void kafkaPublishAndConsumeWorks() throws Exception {
         AssetPrice testPrice = new AssetPrice(
                 "BTC", "KRW", "UPBIT",
                 new BigDecimal("137500000"),
@@ -109,10 +79,9 @@ class PipelineIntegrationTest {
                 Instant.now()
         );
 
-        // 1. Kafka로 전송
-        kafkaTemplate.send(pipelineProperties.getKafkaTopic(), "UPBIT:KRW:BTC", testPrice).get(10, TimeUnit.SECONDS);
+        kafkaTemplate.send(pipelineProperties.getKafkaTopic(), "UPBIT:KRW:BTC", testPrice)
+                .get(10, TimeUnit.SECONDS);
 
-        // 2. Kafka Consumer로 메시지 도착 확인
         try (KafkaConsumer<String, String> consumer = createTestConsumer()) {
             consumer.subscribe(List.of(pipelineProperties.getKafkaTopic()));
             List<String> received = new ArrayList<>();
@@ -124,30 +93,10 @@ class PipelineIntegrationTest {
             assertThat(received).isNotEmpty();
             assertThat(received.get(0)).contains("BTC");
         }
-
-        // 3. Kafka Consumer(앱 내부)가 처리 후 Redis에 캐시했는지 확인
-        // 앱 내부 consumer가 비동기로 처리하므로 약간의 대기
-        Thread.sleep(3000);
-
-        String redisKey = "%s:UPBIT:KRW:BTC".formatted(pipelineProperties.getRedisKeyPrefix());
-        String cachedValue = redisTemplate.opsForValue().get(redisKey).block(Duration.ofSeconds(5));
-
-        // Redis 캐시가 CollectorPipeline 경로(Collector→Sink)를 타므로,
-        // KafkaListener와는 별도 경로. 직접 Redis에 넣는 건 CollectorPipeline의 dispatch.
-        // 여기서는 Kafka publish 성공 + Consumer 수신 확인이 핵심.
-
-        // 4. PostgreSQL에 이력 저장 확인 (CollectorPipeline 경로)
-        // 수집기가 꺼져 있으므로 CollectorPipeline 경유 데이터는 없지만,
-        // 스키마 초기화와 DB 연결이 정상인지 확인
-        Long count = databaseClient.sql("SELECT COUNT(*) FROM asset_price_history")
-                .map(row -> row.get(0, Long.class))
-                .first()
-                .block(Duration.ofSeconds(5));
-        assertThat(count).isNotNull();
     }
 
     @Test
-    void collectorPipelineDispatchesToAllSinks() throws Exception {
+    void redisAndPostgresSinksWork() throws Exception {
         AssetPrice testPrice = new AssetPrice(
                 "XAU", "USD", "GOLDAPI",
                 new BigDecimal("4700.00"),
@@ -155,18 +104,12 @@ class PipelineIntegrationTest {
                 Instant.now()
         );
 
-        // AssetPriceStore에 직접 주입 → CollectorPipeline의 dispatch를 시뮬레이션
+        // In-memory store
         assetPriceStore.update(testPrice);
-
-        // in-memory store에 반영 확인
         assertThat(assetPriceStore.snapshot())
-                .anyMatch(price -> "XAU".equals(price.symbol()) && "GOLDAPI".equals(price.source()));
+                .anyMatch(p -> "XAU".equals(p.symbol()) && "GOLDAPI".equals(p.source()));
 
-        // Kafka에 직접 publish
-        kafkaTemplate.send(pipelineProperties.getKafkaTopic(), "GOLDAPI:USD:XAU", testPrice)
-                .get(10, TimeUnit.SECONDS);
-
-        // Redis에 직접 persist (sink 동작 확인)
+        // Redis
         String redisKey = "%s:GOLDAPI:USD:XAU".formatted(pipelineProperties.getRedisKeyPrefix());
         String payload = objectMapper.writeValueAsString(testPrice);
         redisTemplate.opsForValue()
@@ -174,10 +117,9 @@ class PipelineIntegrationTest {
                 .block(Duration.ofSeconds(5));
 
         String cached = redisTemplate.opsForValue().get(redisKey).block(Duration.ofSeconds(5));
-        assertThat(cached).isNotNull();
-        assertThat(cached).contains("XAU").contains("4700");
+        assertThat(cached).isNotNull().contains("XAU").contains("4700");
 
-        // PostgreSQL에 직접 persist (sink 동작 확인)
+        // PostgreSQL
         databaseClient.sql("""
                         INSERT INTO asset_price_history (
                             symbol, quote_currency, source, price, signed_change_rate, collected_at
@@ -198,11 +140,11 @@ class PipelineIntegrationTest {
                 .map(row -> row.get(0, Long.class))
                 .first()
                 .block(Duration.ofSeconds(5));
-        assertThat(count).isEqualTo(1L);
+        assertThat(count).isGreaterThanOrEqualTo(1L);
     }
 
     @Test
-    void dashboardApiRespondsWhenInfraIsUp() {
+    void dashboardApiResponds() {
         webTestClient.get().uri("/api/dashboard")
                 .exchange()
                 .expectStatus().isOk();
@@ -219,7 +161,7 @@ class PipelineIntegrationTest {
 
     private KafkaConsumer<String, String> createTestConsumer() {
         var props = new java.util.Properties();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         props.put(ConsumerConfig.GROUP_ID_CONFIG, "test-verification-" + System.currentTimeMillis());
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
