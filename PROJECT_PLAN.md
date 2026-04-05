@@ -8,6 +8,33 @@
 - **포트폴리오 프로젝트**: WebFlux + Kafka 기반 리액티브/고성능 처리 역량 증명
 - **실사용 목적**: 본인의 자산 투자 의사결정 보조
 
+## 현재 진행 상태
+
+기준일: 2026-04-04
+
+### 완료
+
+- [x] Spring Boot 3 + WebFlux 기본 런타임
+- [x] Kafka, Redis, PostgreSQL, Prometheus, Grafana 로컬 스택
+- [x] Upbit, Gold API, KIS, Alpha Vantage 수집기
+- [x] 대시보드, 최신/이력, 비교, 분석, 알림 API
+- [x] 통계 API: 이동평균, 변동성, 상관관계, 요약 통계
+- [x] React Dashboard / Analytics 화면
+- [x] 프론트엔드 ESLint 오류 정리
+- [x] 프론트엔드 테스트와 CI 품질 게이트
+- [x] 백엔드 테스트와 GitHub Actions CI
+
+### 진행 중
+
+- [ ] 문서와 실제 구현 상태 동기화 유지
+
+### 미구현
+
+- [ ] Binance 수집기
+- [ ] Finnhub 수집기
+- [ ] 추천/전략 계층 고도화
+- [ ] 운영 배포 환경 분리
+
 ---
 
 ## 기술 스택

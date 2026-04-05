@@ -1,0 +1,10 @@
+jupyterlab>=4.0
+pandas>=2.2
+numpy>=1.26
+matplotlib>=3.9
+seaborn>=0.13
+plotly>=5.22
+psycopg2-binary>=2.9
+sqlalchemy>=2.0
+python-dotenv>=1.0
+scipy>=1.13
