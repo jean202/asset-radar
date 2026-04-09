@@ -51,6 +51,20 @@ asset-radar:
       - AAPL
       - NVDA
     source: ALPHAVANTAGE
+  binance:
+    enabled: false
+    websocket-url: wss://stream.binance.com:9443/ws
+    symbols:
+      - btcusdt
+      - ethusdt
+  finnhub:
+    enabled: false
+    base-url: https://finnhub.io/api/v1
+    api-key: ${ASSET_RADAR_FINNHUB_API_KEY:}
+    refresh-interval: 1m
+    symbols:
+      - AAPL
+      - MSFT
   gold:
     enabled: true
     base-url: https://api.gold-api.com
