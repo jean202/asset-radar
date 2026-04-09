@@ -105,8 +105,8 @@ flowchart LR
 - [x] Gold API 기반 금 시세 폴링
 - [x] 한국투자증권(KIS) 기반 한국 주식 수집기
 - [x] Alpha Vantage 기반 미국 주식 수집기
-- [ ] Binance WebSocket 연동
-- [ ] Finnhub 연동
+- [x] Binance WebSocket 연동 (btcusdt, ethusdt)
+- [x] Finnhub REST 연동 (US stocks)
 
 ### 파이프라인과 저장소
 
@@ -245,7 +245,6 @@ GET /api/statistics/summary?symbol=BTC&source=UPBIT&period=30d
 
 ## 현재 남은 작업
 
-- Binance/Finnhub 등 추가 소스 연결
 - 추천/전략 계층 고도화
 - 운영 배포 스크립트와 환경 분리
 - Swagger 예시 응답 추가 정리
