@@ -2,6 +2,93 @@
 
 `asset-radar`는 금, 코인, 한국 주식, 미국 주식 시세를 수집하고 Kafka 기반 파이프라인으로 분석/알림/조회 API까지 제공하는 실시간 자산 모니터링 프로젝트입니다.
 
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph SRC["External Sources"]
+        UPBIT["Upbit WS"]
+        GOLD["Gold API"]
+        KIS["KIS<br/>한국주식"]
+        AV["Alpha Vantage<br/>미국주식"]
+    end
+
+    subgraph COL["Collectors (WebFlux)"]
+        CC["CoinCollector"]
+        GC["GoldCollector"]
+        SKR["StockKrCollector"]
+        SUS["StockUsCollector"]
+    end
+
+    subgraph KAFKA["Kafka Topics"]
+        T1["asset.price.realtime"]
+        T2["asset.price.analysis"]
+    end
+
+    subgraph CONS["Consumers"]
+        PIPE["CollectorPipeline"]
+        ANA["AnalysisProcessor"]
+        ALERT["AssetAlertConsumer"]
+    end
+
+    subgraph STORE["Stores"]
+        REDIS["Redis<br/>latest cache"]
+        PG["PostgreSQL<br/>history tables"]
+    end
+
+    subgraph API["API Layer (Spring WebFlux)"]
+        REST["REST<br/>latest / history / compare<br/>analysis / alerts / statistics"]
+        SSE["SSE<br/>/api/dashboard/stream"]
+        SWAG["Swagger UI"]
+    end
+
+    subgraph FE["Frontend (React + Vite)"]
+        DASH["Dashboard"]
+        ANALY["Analytics"]
+    end
+
+    subgraph OPS["Ops"]
+        PROM["Prometheus"]
+        GRAF["Grafana"]
+        SLACK["Slack /<br/>Webhook"]
+    end
+
+    UPBIT --> CC
+    GOLD --> GC
+    KIS --> SKR
+    AV --> SUS
+
+    CC --> T1
+    GC --> T1
+    SKR --> T1
+    SUS --> T1
+
+    T1 --> PIPE
+    T1 --> ANA
+    ANA --> T2
+    T2 --> ALERT
+
+    PIPE --> REDIS
+    PIPE --> PG
+    ANA --> REDIS
+    ANA --> PG
+    ALERT --> PG
+    ALERT --> SLACK
+
+    REDIS --> REST
+    PG --> REST
+    REDIS --> SSE
+
+    REST --> DASH
+    REST --> ANALY
+    SSE --> DASH
+
+    API -.metrics.-> PROM
+    PROM --> GRAF
+```
+
+수집 → Kafka → 처리/저장 → API → 화면이 단방향으로 흐르고, 운영 메트릭은 Micrometer를 통해 Prometheus/Grafana로 별도 분리됩니다. 자세한 구조는 [`docs/architecture.md`](docs/architecture.md)를 참고하세요.
+
 ## 상태 스냅샷
 
 기준일: 2026-04-04
@@ -158,7 +245,7 @@ GET /api/statistics/summary?symbol=BTC&source=UPBIT&period=30d
 
 ## 현재 남은 작업
 
-- 프론트엔드 lint 오류 정리
 - Binance/Finnhub 등 추가 소스 연결
 - 추천/전략 계층 고도화
-- README와 Swagger 예시 응답 추가 정리
+- 운영 배포 스크립트와 환경 분리
+- Swagger 예시 응답 추가 정리
