@@ -23,7 +23,7 @@ public class PostgresAssetStatisticsReader implements AssetStatisticsReader {
     @Override
     public Flux<AssetPrice> readPriceWindow(StatisticsQuery query) {
         StringBuilder sql = new StringBuilder("""
-                SELECT symbol, quote_currency, source, price, signed_change_rate, collected_at
+                SELECT symbol, COALESCE(name, '') AS name, quote_currency, source, price, signed_change_rate, collected_at
                 FROM asset_price_history
                 WHERE symbol = :symbol
                   AND collected_at >= :from
@@ -52,6 +52,7 @@ public class PostgresAssetStatisticsReader implements AssetStatisticsReader {
 
         return spec.map((row, metadata) -> new AssetPrice(
                 row.get("symbol", String.class),
+                row.get("name", String.class),
                 row.get("quote_currency", String.class),
                 row.get("source", String.class),
                 row.get("price", BigDecimal.class),

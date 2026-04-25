@@ -154,6 +154,15 @@
 
 .symbol-cell {
   font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.asset-name {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: #9ca3af;
 }
 
 .price-cell {

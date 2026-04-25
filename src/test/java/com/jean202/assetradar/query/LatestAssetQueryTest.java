@@ -17,6 +17,7 @@ class LatestAssetQueryTest {
         assertThat(query.redisKeyPattern("asset:latest")).isEqualTo("asset:latest:UPBIT:KRW:*");
         assertThat(query.matches(new AssetPrice(
                 "BTC",
+                "",
                 "KRW",
                 "UPBIT",
                 new BigDecimal("100"),

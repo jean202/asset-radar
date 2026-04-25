@@ -54,7 +54,7 @@ public class BinanceTickerDecoder {
             BigDecimal signedChangeRate = changeRate != null ? changeRate.movePointLeft(2) : BigDecimal.ZERO;
             Instant collectedAt = eventTime > 0 ? Instant.ofEpochMilli(eventTime) : Instant.now();
 
-            return new AssetPrice(symbol, quoteCurrency, "BINANCE", price, signedChangeRate, collectedAt);
+            return new AssetPrice(symbol, "", quoteCurrency, "BINANCE", price, signedChangeRate, collectedAt);
         } catch (JsonProcessingException exception) {
             throw new IllegalArgumentException("Failed to decode Binance ticker payload", exception);
         }

@@ -49,6 +49,9 @@ flowchart LR
 
     subgraph OPS["Ops"]
         PROM["Prometheus"]
+        LOKI["Loki"]
+        TEMP["Tempo"]
+        ALERTM["Alertmanager"]
         GRAF["Grafana"]
         SLACK["Slack /<br/>Webhook"]
     end
@@ -84,10 +87,27 @@ flowchart LR
     SSE --> DASH
 
     API -.metrics.-> PROM
+    API -.logs.-> LOKI
+    API -.traces.-> TEMP
     PROM --> GRAF
+    PROM --> ALERTM
+    LOKI --> GRAF
+    TEMP --> GRAF
+    ALERTM --> GRAF
+    ALERTM --> SLACK
 ```
 
-수집 → Kafka → 처리/저장 → API → 화면이 단방향으로 흐르고, 운영 메트릭은 Micrometer를 통해 Prometheus/Grafana로 별도 분리됩니다. 자세한 구조는 [`docs/architecture.md`](docs/architecture.md)를 참고하세요.
+수집 → Kafka → 처리/저장 → API → 화면이 단방향으로 흐르고, 운영 신호는 `Prometheus + Grafana + Loki + Tempo + Alertmanager` 스택으로 분리됩니다. 자세한 구조는 [`docs/architecture.md`](docs/architecture.md)를 참고하세요.
+
+## Screenshots
+
+### 실시간 대시보드
+| Dashboard #1 | Dashboard #2 |
+|--------------|--------------|
+| ![실시간 대시보드 1 — 다중 소스 자산 가격](docs/screenshots/dashboard_1.png) | ![실시간 대시보드 2 — SSE 실시간 갱신](docs/screenshots/dashboard_2.png) |
+
+### 분석 화면
+![애널리틱스 화면 — 가격 추이 차트 및 통계](docs/screenshots/analytics.png)
 
 ## 상태 스냅샷
 
@@ -155,7 +175,7 @@ flowchart LR
 
 ### 운영과 품질
 
-- [x] Micrometer + Prometheus + Grafana 모니터링 스택
+- [x] 로컬 observability stack (`Prometheus + Grafana + Loki + Tempo + Alertmanager`)
 - [x] GitHub Actions CI
 - [x] 백엔드 단위/웹/통합 테스트
 - [x] 프론트엔드 lint/test/build를 포함한 CI 품질 게이트
@@ -168,7 +188,7 @@ flowchart LR
 인프라만 Docker로 띄우고 애플리케이션은 로컬에서 실행하는 방식입니다.
 
 ```bash
-docker compose up -d kafka redis postgres prometheus grafana
+docker compose up -d kafka redis postgres prometheus grafana loki promtail tempo alertmanager
 ./gradlew bootRun
 cd frontend
 npm install
@@ -179,6 +199,12 @@ npm run dev
 - 프론트엔드 개발 서버: `http://localhost:5173`
 - Grafana: `http://localhost:3000`
 - Prometheus: `http://localhost:9090`
+- Loki: `http://localhost:3100`
+- Tempo: `http://localhost:3200`
+- Tempo OTLP: `grpc://localhost:4317`, `http://localhost:4318`
+- Alertmanager: `http://localhost:9093`
+
+로그는 `Promtail -> Loki`로 바로 수집되고, Prometheus alert rule은 Alertmanager까지 연결됩니다. Tempo는 OTLP 수집 엔드포인트까지 열어두었고, 애플리케이션 tracing exporter를 붙이면 Grafana에서 trace 조회까지 이어집니다.
 
 ### 전체 컨테이너 실행
 

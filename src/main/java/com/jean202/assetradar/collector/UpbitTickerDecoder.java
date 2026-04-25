@@ -56,6 +56,7 @@ public class UpbitTickerDecoder {
 
             return new AssetPrice(
                     symbol,
+                    "",
                     quoteCurrency,
                     "UPBIT",
                     price,

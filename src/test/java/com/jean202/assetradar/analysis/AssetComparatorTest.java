@@ -17,8 +17,8 @@ class AssetComparatorTest {
     void comparesWindowUsingStartAndEndPrices() {
         AssetCompareWindow window = new AssetCompareWindow(
                 new AssetCompareQuery.AssetSpec("BTC", "UPBIT", "KRW"),
-                new AssetPrice("BTC", "KRW", "UPBIT", new BigDecimal("100"), BigDecimal.ZERO, Instant.parse("2026-03-01T00:00:00Z")),
-                new AssetPrice("BTC", "KRW", "UPBIT", new BigDecimal("120"), BigDecimal.ZERO, Instant.parse("2026-03-31T00:00:00Z")),
+                new AssetPrice("BTC", "", "KRW", "UPBIT", new BigDecimal("100"), BigDecimal.ZERO, Instant.parse("2026-03-01T00:00:00Z")),
+                new AssetPrice("BTC", "", "KRW", "UPBIT", new BigDecimal("120"), BigDecimal.ZERO, Instant.parse("2026-03-31T00:00:00Z")),
                 2
         );
 

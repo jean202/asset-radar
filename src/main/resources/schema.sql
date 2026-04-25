@@ -46,6 +46,9 @@ CREATE TABLE IF NOT EXISTS asset_alert_history (
     alerted_at TIMESTAMPTZ NOT NULL
 );
 
+ALTER TABLE IF EXISTS asset_price_history
+    ADD COLUMN IF NOT EXISTS name VARCHAR(128) NOT NULL DEFAULT '';
+
 ALTER TABLE IF EXISTS asset_alert_history
     ADD COLUMN IF NOT EXISTS baseline_at TIMESTAMPTZ;
 

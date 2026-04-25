@@ -41,6 +41,9 @@ asset-radar:
     symbols:
       - "005930"
       - "000660"
+    symbol-names:
+      "005930": "삼성전자"
+      "000660": "SK하이닉스"
     source: KIS
   stock-us:
     enabled: true
@@ -122,6 +125,12 @@ management:
     web:
       exposure:
         include: health,info,prometheus,metrics
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${MANAGEMENT_OTLP_TRACING_ENDPOINT:http://localhost:4318/v1/traces}
   metrics:
     tags:
       application: asset-radar

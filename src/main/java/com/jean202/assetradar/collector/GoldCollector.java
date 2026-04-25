@@ -82,6 +82,7 @@ public class GoldCollector implements AssetCollector {
 
         return new AssetPrice(
                 spotPrice.symbol(),
+                "",
                 spotPrice.quoteCurrency(),
                 source,
                 spotPrice.price(),

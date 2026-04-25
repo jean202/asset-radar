@@ -136,6 +136,7 @@ class DashboardControllerWebTest {
     ) {
         return new AssetPrice(
                 symbol,
+                "",
                 quoteCurrency,
                 source,
                 new BigDecimal(price),

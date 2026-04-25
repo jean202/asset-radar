@@ -19,24 +19,28 @@ public class StockKrCollector implements AssetCollector {
 
     private final StockKrCollectorProperties properties;
     private final KisPriceDecoder decoder;
+    private final KisTokenManager tokenManager;
     private final WebClient webClient;
 
     @Autowired
     public StockKrCollector(
             StockKrCollectorProperties properties,
             KisPriceDecoder decoder,
+            KisTokenManager tokenManager,
             WebClient.Builder webClientBuilder
     ) {
-        this(properties, decoder, webClientBuilder.baseUrl(properties.getBaseUrl().toString()).build());
+        this(properties, decoder, tokenManager, webClientBuilder.baseUrl(properties.getBaseUrl().toString()).build());
     }
 
     StockKrCollector(
             StockKrCollectorProperties properties,
             KisPriceDecoder decoder,
+            KisTokenManager tokenManager,
             WebClient webClient
     ) {
         this.properties = properties;
         this.decoder = decoder;
+        this.tokenManager = tokenManager;
         this.webClient = webClient;
     }
 
@@ -68,24 +72,28 @@ public class StockKrCollector implements AssetCollector {
     }
 
     Mono<AssetPrice> fetchPrice(String symbol) {
-        return webClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/uapi/domestic-stock/v1/quotations/inquire-price")
-                        .queryParam("FID_COND_MRKT_DIV_CODE", "J")
-                        .queryParam("FID_INPUT_ISCD", symbol)
-                        .build())
-                .header("tr_id", "FHKST01010100")
-                .header("appkey", properties.getAppKey())
-                .header("appsecret", properties.getAppSecret())
-                .retrieve()
-                .bodyToMono(String.class)
-                .flatMap(payload -> Mono.justOrEmpty(decoder.decode(payload)))
-                .map(stockPrice -> toAssetPrice(stockPrice, properties.normalizedSource()));
+        return tokenManager.getToken()
+                .switchIfEmpty(Mono.error(new IllegalStateException("KIS access token unavailable — check ASSET_RADAR_KIS_APP_KEY / ASSET_RADAR_KIS_APP_SECRET")))
+                .flatMap(token -> webClient.get()
+                        .uri(uriBuilder -> uriBuilder
+                                .path("/uapi/domestic-stock/v1/quotations/inquire-price")
+                                .queryParam("FID_COND_MRKT_DIV_CODE", "J")
+                                .queryParam("FID_INPUT_ISCD", symbol)
+                                .build())
+                        .header("Authorization", "Bearer " + token)
+                        .header("tr_id", "FHKST01010100")
+                        .header("appkey", properties.getAppKey())
+                        .header("appsecret", properties.getAppSecret())
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .flatMap(payload -> Mono.justOrEmpty(decoder.decode(payload)))
+                        .map(stockPrice -> toAssetPrice(stockPrice, properties.normalizedSource())));
     }
 
     private AssetPrice toAssetPrice(KisPriceDecoder.KisStockPrice stockPrice, String source) {
         return new AssetPrice(
                 stockPrice.symbol(),
+                properties.nameFor(stockPrice.symbol()),
                 "KRW",
                 source,
                 stockPrice.price(),

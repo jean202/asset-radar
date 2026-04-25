@@ -73,7 +73,7 @@ class PipelineIntegrationTest {
     @Test
     void kafkaPublishAndConsumeWorks() throws Exception {
         AssetPrice testPrice = new AssetPrice(
-                "BTC", "KRW", "UPBIT",
+                "BTC", "", "KRW", "UPBIT",
                 new BigDecimal("137500000"),
                 new BigDecimal("0.023"),
                 Instant.now()
@@ -98,7 +98,7 @@ class PipelineIntegrationTest {
     @Test
     void redisAndPostgresSinksWork() throws Exception {
         AssetPrice testPrice = new AssetPrice(
-                "XAU", "USD", "GOLDAPI",
+                "XAU", "", "USD", "GOLDAPI",
                 new BigDecimal("4700.00"),
                 new BigDecimal("0.005"),
                 Instant.now()

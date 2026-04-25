@@ -178,7 +178,10 @@ export default function Dashboard() {
               <tbody>
                 {g.assets.map(a => (
                   <tr key={a.symbol}>
-                    <td className="symbol-cell">{a.symbol}</td>
+                    <td className="symbol-cell">
+                      <span>{a.symbol}</span>
+                      {a.name && <span className="asset-name">{a.name}</span>}
+                    </td>
                     <td>{a.quoteCurrency}</td>
                     <td className="price-cell">{formatPrice(a.price, a.quoteCurrency)}</td>
                     <td className={'change-cell ' + changeClass(a.signedChangeRate)}>

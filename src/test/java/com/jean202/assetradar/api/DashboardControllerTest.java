@@ -160,6 +160,7 @@ class DashboardControllerTest {
     void streamIncludesSnapshotThenLiveUpdates() {
         assetPriceStore.update(new AssetPrice(
                 "BTC",
+                "",
                 "KRW",
                 "UPBIT",
                 new BigDecimal("137500000"),
@@ -171,6 +172,7 @@ class DashboardControllerTest {
                 .assertNext(price -> assertThat(price.symbol()).isEqualTo("BTC"))
                 .then(() -> assetPriceStore.update(new AssetPrice(
                         "ETH",
+                        "",
                         "KRW",
                         "UPBIT",
                         new BigDecimal("5120000"),
@@ -209,6 +211,7 @@ class DashboardControllerTest {
     ) {
         return new AssetPrice(
                 symbol,
+                "",
                 quoteCurrency,
                 source,
                 new BigDecimal(price),

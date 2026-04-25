@@ -1,0 +1,47 @@
+groups:
+  - name: asset-radar
+    rules:
+      - alert: ObservabilityComponentDown
+        expr: up{job=~"prometheus|grafana|loki|tempo|alertmanager"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Observability component is down"
+          description: "{{ $labels.job }} target {{ $labels.instance }} has been unreachable for more than 2 minutes."
+
+      - alert: AssetRadarCollectorErrors
+        expr: sum by (source) (increase(asset_collector_errors_total[5m])) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Collector errors detected"
+          description: "{{ $labels.source }} collector reported errors in the last 5 minutes."
+
+      - alert: AssetRadarAnalysisPipelineIdle
+        expr: sum(increase(asset_collector_prices_total[10m])) > 0 and sum(increase(asset_analysis_processed_total[10m])) == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Analysis pipeline appears stalled"
+          description: "Collectors are still producing prices, but no analysis events were processed in the last 10 minutes."
+
+      - alert: AssetRadarAlertPipelineIdle
+        expr: sum(increase(asset_analysis_processed_total[10m])) > 0 and sum(increase(asset_alerts_evaluated_total[10m])) == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Alert pipeline appears stalled"
+          description: "Analysis events are still being processed, but alert evaluation stopped for the last 10 minutes."
+
+      - alert: AssetRadarApi5xxBurst
+        expr: sum(rate(http_server_requests_seconds_count{service="asset-radar",status=~"5.."}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API is returning 5xx responses"
+          description: "The asset-radar API returned more than 0.05 5xx responses per second over the last 5 minutes."

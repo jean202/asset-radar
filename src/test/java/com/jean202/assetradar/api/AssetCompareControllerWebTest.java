@@ -87,6 +87,7 @@ class AssetCompareControllerWebTest {
                 new AssetCompareQuery.AssetSpec(symbol, source, quoteCurrency),
                 new AssetPrice(
                         symbol,
+                        "",
                         quoteCurrency,
                         source,
                         new BigDecimal(startPrice),
@@ -95,6 +96,7 @@ class AssetCompareControllerWebTest {
                 ),
                 new AssetPrice(
                         symbol,
+                        "",
                         quoteCurrency,
                         source,
                         new BigDecimal(endPrice),

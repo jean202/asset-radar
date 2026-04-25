@@ -16,6 +16,19 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 class StockKrCollectorTest {
+
+    private static KisTokenManager fixedToken(String token) {
+        StockKrCollectorProperties props = new StockKrCollectorProperties();
+        props.setAppKey("test-key");
+        props.setAppSecret("test-secret");
+        return new KisTokenManager(props, WebClient.builder()
+                .exchangeFunction(req -> Mono.just(ClientResponse.create(HttpStatus.OK)
+                        .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                        .body("{\"access_token\":\"" + token + "\",\"expires_in\":86400}")
+                        .build()))
+                .build(), new ObjectMapper());
+    }
+
     @Test
     void emitsStockPricesRoundRobin() {
         StockKrCollectorProperties properties = new StockKrCollectorProperties();
@@ -57,6 +70,7 @@ class StockKrCollectorTest {
         StockKrCollector collector = new StockKrCollector(
                 properties,
                 new KisPriceDecoder(new ObjectMapper()),
+                fixedToken("fake-token"),
                 WebClient.builder().exchangeFunction(exchangeFunction).build()
         );
 
@@ -83,6 +97,7 @@ class StockKrCollectorTest {
         StockKrCollector collector = new StockKrCollector(
                 properties,
                 new KisPriceDecoder(new ObjectMapper()),
+                fixedToken("fake-token"),
                 WebClient.builder().exchangeFunction(request -> Mono.error(new AssertionError("should not call"))).build()
         );
 
@@ -98,6 +113,7 @@ class StockKrCollectorTest {
         StockKrCollector collector = new StockKrCollector(
                 properties,
                 new KisPriceDecoder(new ObjectMapper()),
+                fixedToken("fake-token"),
                 WebClient.builder().exchangeFunction(request -> Mono.error(new AssertionError("should not call"))).build()
         );
 

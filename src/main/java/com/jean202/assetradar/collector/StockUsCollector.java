@@ -84,6 +84,7 @@ public class StockUsCollector implements AssetCollector {
     private AssetPrice toAssetPrice(AlphaVantagePriceDecoder.AlphaVantageQuote quote, String source) {
         return new AssetPrice(
                 quote.symbol(),
+                "",
                 "USD",
                 source,
                 quote.price(),

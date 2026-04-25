@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew test *)",
+      "Bash(./gradlew build *)",
+      "Bash(xargs ls *)",
+      "Bash(./gradlew compileTestJava)",
+      "Bash(redis-cli -p 6380 get \"asset:latest:KIS:KRW:005930\")",
+      "Bash(redis-cli -p 6380 keys \"asset:latest:KIS*\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
+    ]
+  }
+}

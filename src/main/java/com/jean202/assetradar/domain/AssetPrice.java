@@ -5,6 +5,7 @@ import java.time.Instant;
 
 public record AssetPrice(
         String symbol,
+        String name,
         String quoteCurrency,
         String source,
         BigDecimal price,

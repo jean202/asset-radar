@@ -79,6 +79,7 @@ public class FinnhubCollector implements AssetCollector {
                 .flatMap(payload -> Mono.justOrEmpty(decoder.decode(payload)))
                 .map(quote -> new AssetPrice(
                         symbol,
+                        "",
                         "USD",
                         "FINNHUB",
                         quote.price(),

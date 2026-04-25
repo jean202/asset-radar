@@ -2,8 +2,10 @@ package com.jean202.assetradar.config;
 
 import java.net.URI;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "asset-radar.stock-kr")
@@ -14,6 +16,7 @@ public class StockKrCollectorProperties {
     private String appSecret = "";
     private Duration refreshInterval = Duration.ofSeconds(3);
     private List<String> symbols = List.of("005930", "000660");
+    private Map<String, String> symbolNames = new HashMap<>();
     private String source = "KIS";
 
     public boolean isEnabled() {
@@ -62,6 +65,18 @@ public class StockKrCollectorProperties {
 
     public void setSymbols(List<String> symbols) {
         this.symbols = symbols;
+    }
+
+    public Map<String, String> getSymbolNames() {
+        return symbolNames;
+    }
+
+    public void setSymbolNames(Map<String, String> symbolNames) {
+        this.symbolNames = symbolNames;
+    }
+
+    public String nameFor(String symbol) {
+        return symbolNames.getOrDefault(symbol, "");
     }
 
     public String getSource() {

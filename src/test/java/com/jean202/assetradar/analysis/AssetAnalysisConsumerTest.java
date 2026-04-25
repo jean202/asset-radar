@@ -30,6 +30,7 @@ class AssetAnalysisConsumerTest {
     private AssetPrice assetPrice(String symbol, String price, String collectedAt) {
         return new AssetPrice(
                 symbol,
+                "",
                 "KRW",
                 "UPBIT",
                 new BigDecimal(price),

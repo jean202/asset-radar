@@ -19,6 +19,7 @@ public class AssetPriceHistoryRepository implements AssetPriceSink {
         return databaseClient.sql("""
                         INSERT INTO asset_price_history (
                             symbol,
+                            name,
                             quote_currency,
                             source,
                             price,
@@ -26,6 +27,7 @@ public class AssetPriceHistoryRepository implements AssetPriceSink {
                             collected_at
                         ) VALUES (
                             :symbol,
+                            :name,
                             :quoteCurrency,
                             :source,
                             :price,
@@ -34,6 +36,7 @@ public class AssetPriceHistoryRepository implements AssetPriceSink {
                         )
                         """)
                 .bind("symbol", price.symbol())
+                .bind("name", price.name() != null ? price.name() : "")
                 .bind("quoteCurrency", price.quoteCurrency())
                 .bind("source", price.source())
                 .bind("price", price.price())

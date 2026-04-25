@@ -18,6 +18,7 @@ class CollectorPipelineTest {
     void storesAndFansOutCollectedPrices() {
         AssetPrice price = new AssetPrice(
                 "BTC",
+                "",
                 "KRW",
                 "UPBIT",
                 new BigDecimal("137500000"),
@@ -52,6 +53,7 @@ class CollectorPipelineTest {
     void keepsProcessingWhenOneSinkFails() {
         AssetPrice price = new AssetPrice(
                 "ETH",
+                "",
                 "KRW",
                 "UPBIT",
                 new BigDecimal("5120000"),

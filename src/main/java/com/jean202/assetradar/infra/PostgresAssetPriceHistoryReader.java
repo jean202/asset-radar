@@ -25,6 +25,7 @@ public class PostgresAssetPriceHistoryReader implements AssetPriceHistoryReader 
         StringBuilder sql = new StringBuilder("""
                 SELECT
                     symbol,
+                    COALESCE(name, '') AS name,
                     quote_currency,
                     source,
                     price,
@@ -66,6 +67,7 @@ public class PostgresAssetPriceHistoryReader implements AssetPriceHistoryReader 
 
         return spec.map((row, metadata) -> new AssetPrice(
                 row.get("symbol", String.class),
+                row.get("name", String.class),
                 row.get("quote_currency", String.class),
                 row.get("source", String.class),
                 row.get("price", BigDecimal.class),
