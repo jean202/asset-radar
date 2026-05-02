@@ -80,6 +80,7 @@ export default function Dashboard() {
   const [dashboard, setDashboard] = useState(null)
   const [prices, setPrices] = useState([])
   const [alerts, setAlerts] = useState([])
+  const [recommendations, setRecommendations] = useState([])
   const [sseStatus, setSseStatus] = useState('connecting')
   const [, setClockTick] = useState(0)
 
@@ -100,15 +101,24 @@ export default function Dashboard() {
       .catch(() => {})
   }, [])
 
+  const fetchRecommendations = useCallback(() => {
+    fetch(API_BASE + '/recommendations')
+      .then(r => r.json())
+      .then(data => setRecommendations(data.recommendations || []))
+      .catch(() => {})
+  }, [])
+
   useEffect(() => {
     fetchDashboard()
     fetchAlerts()
+    fetchRecommendations()
     const interval = setInterval(() => {
       fetchAlerts()
+      fetchRecommendations()
       setClockTick(tick => tick + 1)
     }, 10000)
     return () => clearInterval(interval)
-  }, [fetchDashboard, fetchAlerts])
+  }, [fetchDashboard, fetchAlerts, fetchRecommendations])
 
   useEffect(() => {
     const es = new EventSource(API_BASE + '/dashboard/stream')
@@ -195,6 +205,36 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
+
+      {recommendations.length > 0 && (
+        <div className="recommendations-section">
+          <h2>📊 Portfolio Recommendations</h2>
+          <div className="recommendation-grid">
+            {recommendations.map((rec, i) => (
+              <div className="recommendation-card" key={i}>
+                <div className="rec-header">
+                  <span className="rec-symbol">{rec.symbol}</span>
+                  <span className={'rec-action ' + rec.action.toLowerCase()}>
+                    {rec.actionLabel}
+                  </span>
+                </div>
+                <div className="rec-confidence">
+                  Confidence: {(rec.confidence * 100).toFixed(0)}%
+                </div>
+                <div className="rec-level">{rec.confidenceLevel}</div>
+                <div className="rec-reasons">
+                  {rec.reasons.slice(0, 2).map((reason, j) => (
+                    <div key={j} className="reason-item">
+                      • {reason.split(': ')[1] || reason}
+                    </div>
+                  ))}
+                </div>
+                <div className="rec-time">{timeAgo(rec.analyzedAt)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {alerts.length > 0 && (
         <div className="alerts-section">
