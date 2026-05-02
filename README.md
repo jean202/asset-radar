@@ -142,9 +142,9 @@ flowchart LR
 - [x] 자산 비교 수익률 계산
 - [x] 최신 분석 결과 생성 및 조회
 - [x] 알림 규칙 엔진과 severity 분류
-- [x] Slack / Webhook 알림 확장 포인트
+- [x] Slack / Discord / Webhook 알림 확장 포인트
 - [x] 통계 API: 이동평균, 변동성, 상관관계, 요약 통계
-- [ ] 포트폴리오 추천/전략화 로직
+- [x] 포트폴리오 추천/전략화 로직
 
 ### API 제공 계층
 
@@ -206,6 +206,26 @@ npm run dev
 
 로그는 `Promtail -> Loki`로 바로 수집되고, Prometheus alert rule은 Alertmanager까지 연결됩니다. Tempo는 OTLP 수집 엔드포인트까지 열어두었고, 애플리케이션 tracing exporter를 붙이면 Grafana에서 trace 조회까지 이어집니다.
 
+알림 채널 설정 예시:
+
+```yaml
+asset-radar:
+  alert:
+    notifier:
+      slack:
+        enabled: true
+        webhook-url: ${ASSET_RADAR_ALERT_SLACK_WEBHOOK_URL}
+      discord:
+        enabled: true
+        webhook-url: ${ASSET_RADAR_ALERT_DISCORD_WEBHOOK_URL}
+```
+
+권장 운영 기준:
+
+- Slack: `CRITICAL`만 전송
+- Discord: `WARN` 이상 전송
+- `INFO`: 외부 채널 전송 없이 API/대시보드/Grafana에서만 확인
+
 ### 전체 컨테이너 실행
 
 ```bash
@@ -261,6 +281,47 @@ GET /api/statistics/correlation?assets=UPBIT:KRW:BTC&assets=UPBIT:KRW:ETH&period
 GET /api/statistics/summary?symbol=BTC&source=UPBIT&period=30d
 ```
 
+### 포트폴리오 추천
+
+```http
+GET /api/recommendations
+GET /api/recommendations?source=UPBIT&quoteCurrency=KRW
+GET /api/recommendations/symbol/{symbol}
+```
+
+최신 분석 데이터에 기반하여 각 자산에 대한 종합 추천 액션(STRONG_BUY ~ STRONG_SELL)을 생성합니다.
+
+**추천 전략:**
+
+- **Momentum Strategy**: 현재 추세와 변화율 기반 단기 추천
+- **Mean Reversion Strategy**: 극단적 변화가 평균으로 복귀할 것이라는 가설 기반
+
+각 전략의 가중치를 적용하여 최종 추천을 결정하고, 신뢰도(confidence) 점수와 근거(reasons)를 함께 제공합니다.
+
+응답 예시:
+
+```json
+{
+  "recommendations": [
+    {
+      "symbol": "BTC",
+      "action": "BUY",
+      "actionLabel": "매수",
+      "confidence": 0.72,
+      "confidenceLevel": "medium",
+      "reasons": [
+        "현재 가격: 42500.50 (변화율: 5.20%, 움직임: UP)",
+        "Momentum Strategy: 매수 (신뢰도: 80%)",
+        "Mean Reversion Strategy: 보유 (신뢰도: 60%)"
+      ],
+      "analyzedAt": "2026-05-02T10:15:00"
+    }
+  ],
+  "totalCount": 1,
+  "analyzedAt": "2026-05-02T10:15:00"
+}
+```
+
 ## 문서
 
 - `docs/architecture.md`
@@ -271,6 +332,6 @@ GET /api/statistics/summary?symbol=BTC&source=UPBIT&period=30d
 
 ## 현재 남은 작업
 
-- 추천/전략 계층 고도화
 - 운영 배포 스크립트와 환경 분리
 - Swagger 예시 응답 추가 정리
+- README 스크린샷 추가 (사용자 환경에서 캡처)

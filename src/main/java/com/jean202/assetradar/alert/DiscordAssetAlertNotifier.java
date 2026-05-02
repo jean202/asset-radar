@@ -3,23 +3,23 @@ package com.jean202.assetradar.alert;
 import com.jean202.assetradar.config.AlertNotifierProperties;
 import com.jean202.assetradar.domain.AssetAlert;
 import com.jean202.webhooknotify.core.NotifyMessage;
-import com.jean202.webhooknotify.core.channel.SlackChannel;
+import com.jean202.webhooknotify.core.channel.DiscordChannel;
 import java.net.http.HttpClient;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
 @Component
-public class SlackAssetAlertNotifier implements AssetAlertNotifier {
-    private final AlertNotifierProperties.SlackProperties properties;
+public class DiscordAssetAlertNotifier implements AssetAlertNotifier {
+    private final AlertNotifierProperties.DiscordProperties properties;
     private final AssetAlertNotificationFormatter formatter;
     private final HttpClient httpClient;
 
-    public SlackAssetAlertNotifier(
+    public DiscordAssetAlertNotifier(
             AlertNotifierProperties alertNotifierProperties,
             AssetAlertNotificationFormatter formatter
     ) {
-        this.properties = alertNotifierProperties.getSlack();
+        this.properties = alertNotifierProperties.getDiscord();
         this.formatter = formatter;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(properties.getTimeout())
@@ -41,12 +41,15 @@ public class SlackAssetAlertNotifier implements AssetAlertNotifier {
             return Mono.empty();
         }
 
-        return Mono.fromRunnable(() -> new SlackChannel(properties.getWebhookUrl(), httpClient)
-                .send(NotifyMessage.text(formatter.format(alert))));
+        NotifyMessage message = NotifyMessage.of(
+                "[%s] %s %s/%s".formatted(alert.severity(), alert.source(), alert.symbol(), alert.quoteCurrency()),
+                formatter.format(alert)
+        );
+        return Mono.fromRunnable(() -> new DiscordChannel(properties.getWebhookUrl(), httpClient).send(message));
     }
 
     @Override
     public String notifierName() {
-        return "slack";
+        return "discord";
     }
 }

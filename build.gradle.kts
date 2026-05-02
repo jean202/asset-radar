@@ -24,6 +24,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-r2dbc")
     implementation("org.springframework.kafka:spring-kafka")
     implementation("org.springdoc:springdoc-openapi-starter-webflux-ui:2.8.6")
+    implementation("io.github.jean202:webhook-notify-core:0.1.0-SNAPSHOT")
 
     runtimeOnly("org.postgresql:r2dbc-postgresql")
     runtimeOnly("io.micrometer:micrometer-registry-prometheus")

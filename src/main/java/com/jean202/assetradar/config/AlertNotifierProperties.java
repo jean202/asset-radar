@@ -8,6 +8,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class AlertNotifierProperties {
     private AsyncProperties async = new AsyncProperties();
     private SlackProperties slack = new SlackProperties();
+    private DiscordProperties discord = new DiscordProperties();
     private WebhookProperties webhook = new WebhookProperties();
 
     public AsyncProperties getAsync() {
@@ -24,6 +25,14 @@ public class AlertNotifierProperties {
 
     public void setSlack(SlackProperties slack) {
         this.slack = slack;
+    }
+
+    public DiscordProperties getDiscord() {
+        return discord;
+    }
+
+    public void setDiscord(DiscordProperties discord) {
+        this.discord = discord;
     }
 
     public WebhookProperties getWebhook() {
@@ -95,6 +104,18 @@ public class AlertNotifierProperties {
     }
 
     public static class SlackProperties extends ChannelProperties {
+        private String webhookUrl = "";
+
+        public String getWebhookUrl() {
+            return webhookUrl;
+        }
+
+        public void setWebhookUrl(String webhookUrl) {
+            this.webhookUrl = webhookUrl;
+        }
+    }
+
+    public static class DiscordProperties extends ChannelProperties {
         private String webhookUrl = "";
 
         public String getWebhookUrl() {

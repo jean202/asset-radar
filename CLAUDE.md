@@ -1,5 +1,26 @@
 # asset-radar — Claude 작업 메모
 
+## 다음 작업 시작 시 가장 먼저 제안할 것
+
+### 알림 채널 실동작 확인
+
+- `webhook-notify` 연동이 이미 들어가 있으므로, 다음 `asset-radar` 작업을 시작하면 **다른 기능 작업보다 먼저** Slack/Discord 알림 실동작 검증을 제안할 것
+- 아직 웹훅 env가 비어 있으면 아래 값을 먼저 준비하도록 안내할 것
+  - `ASSET_RADAR_ALERT_SLACK_WEBHOOK_URL`
+  - `ASSET_RADAR_ALERT_DISCORD_WEBHOOK_URL`
+  - `ASSET_RADAR_ALERT_NOTIFIER_SLACK_ENABLED=true`
+  - `ASSET_RADAR_ALERT_NOTIFIER_DISCORD_ENABLED=true`
+- 기본 운영 기준도 함께 상기할 것
+  - Slack: `CRITICAL`만 전송
+  - Discord: `WARN` 이상 전송
+  - `INFO`: 외부 채널 전송 없음
+- 사용자가 아직 웹훅을 넣지 않았다면, 다음 액션으로는 기능 개발보다 먼저
+  1. env 설정
+  2. `asset-radar` 실행
+  3. 실제 알림 발생 시나리오 1회 검증
+  를 제안할 것
+- 사용자가 “다음 뭐 하지?” 또는 일반적인 `asset-radar` 작업을 요청하면, Claude는 우선순위 1번으로 이 검증 작업부터 추천할 것
+
 ## 진행 중인 TODO
 
 ### README에 동작 스크린샷 추가 (보류 — 사용자가 직접 캡처 예정)

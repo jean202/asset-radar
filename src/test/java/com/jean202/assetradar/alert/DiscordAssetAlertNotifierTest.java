@@ -17,24 +17,21 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 
-class SlackAssetAlertNotifierTest {
+class DiscordAssetAlertNotifierTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final AssetAlertNotificationFormatter formatter = new AssetAlertNotificationFormatter();
 
     @Test
-    void sendsSlackWebhookPayload() throws Exception {
+    void sendsDiscordWebhookPayload() throws Exception {
         BlockingQueue<CapturedRequest> requests = new LinkedBlockingQueue<>();
-        HttpServer server = server("/slack", requests);
+        HttpServer server = server("/discord", requests);
 
         try {
             AlertNotifierProperties properties = new AlertNotifierProperties();
-            properties.getSlack().setEnabled(true);
-            properties.getSlack().setMinimumSeverity(AlertSeverity.WARN);
-            properties.getSlack().setWebhookUrl("http://localhost:%d/slack".formatted(server.getAddress().getPort()));
-            SlackAssetAlertNotifier notifier = new SlackAssetAlertNotifier(
-                    properties,
-                    formatter
-            );
+            properties.getDiscord().setEnabled(true);
+            properties.getDiscord().setMinimumSeverity(AlertSeverity.WARN);
+            properties.getDiscord().setWebhookUrl("http://localhost:%d/discord".formatted(server.getAddress().getPort()));
+            DiscordAssetAlertNotifier notifier = new DiscordAssetAlertNotifier(properties, formatter);
 
             notifier.send(alert("WARN")).block();
 
@@ -42,7 +39,11 @@ class SlackAssetAlertNotifierTest {
             assertThat(request).isNotNull();
             assertThat(request.method()).isEqualTo("POST");
             JsonNode payload = objectMapper.readTree(request.body());
-            assertThat(payload.get("text").asText())
+            assertThat(payload.get("embeds")).isNotNull();
+            assertThat(payload.get("embeds")).hasSize(1);
+            assertThat(payload.get("embeds").get(0).get("title").asText())
+                    .isEqualTo("[WARN] UPBIT BTC/KRW");
+            assertThat(payload.get("embeds").get(0).get("description").asText())
                     .isEqualTo("UPBIT BTC/KRW UP 1.50% over 1m [WARN] at 2026-03-31T00:01:00Z");
         } finally {
             server.stop(0);
@@ -50,19 +51,16 @@ class SlackAssetAlertNotifierTest {
     }
 
     @Test
-    void skipsSlackWebhookWhenSeverityIsBelowMinimum() throws Exception {
+    void skipsDiscordWebhookWhenSeverityIsBelowMinimum() throws Exception {
         BlockingQueue<CapturedRequest> requests = new LinkedBlockingQueue<>();
-        HttpServer server = server("/slack", requests);
+        HttpServer server = server("/discord", requests);
 
         try {
             AlertNotifierProperties properties = new AlertNotifierProperties();
-            properties.getSlack().setEnabled(true);
-            properties.getSlack().setMinimumSeverity(AlertSeverity.CRITICAL);
-            properties.getSlack().setWebhookUrl("http://localhost:%d/slack".formatted(server.getAddress().getPort()));
-            SlackAssetAlertNotifier notifier = new SlackAssetAlertNotifier(
-                    properties,
-                    formatter
-            );
+            properties.getDiscord().setEnabled(true);
+            properties.getDiscord().setMinimumSeverity(AlertSeverity.CRITICAL);
+            properties.getDiscord().setWebhookUrl("http://localhost:%d/discord".formatted(server.getAddress().getPort()));
+            DiscordAssetAlertNotifier notifier = new DiscordAssetAlertNotifier(properties, formatter);
 
             notifier.send(alert("WARN")).block();
 
@@ -81,12 +79,7 @@ class SlackAssetAlertNotifierTest {
 
     private void handle(HttpExchange exchange, BlockingQueue<CapturedRequest> requests) throws IOException {
         byte[] body = exchange.getRequestBody().readAllBytes();
-        requests.add(new CapturedRequest(
-                exchange.getRequestMethod(),
-                exchange.getRequestURI().getPath(),
-                exchange.getRequestHeaders().getFirst("Authorization"),
-                new String(body)
-        ));
+        requests.add(new CapturedRequest(exchange.getRequestMethod(), new String(body)));
         exchange.sendResponseHeaders(200, -1);
         exchange.close();
     }
@@ -111,6 +104,6 @@ class SlackAssetAlertNotifierTest {
         );
     }
 
-    private record CapturedRequest(String method, String path, String authorization, String body) {
+    private record CapturedRequest(String method, String body) {
     }
 }

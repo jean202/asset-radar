@@ -106,6 +106,11 @@ asset-radar:
         minimum-severity: CRITICAL
         webhook-url: ${ASSET_RADAR_ALERT_SLACK_WEBHOOK_URL:}
         timeout: 3s
+      discord:
+        enabled: false
+        minimum-severity: WARN
+        webhook-url: ${ASSET_RADAR_ALERT_DISCORD_WEBHOOK_URL:}
+        timeout: 3s
       webhook:
         enabled: false
         minimum-severity: WARN
