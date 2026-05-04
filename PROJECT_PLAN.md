@@ -32,8 +32,11 @@
 
 - [ ] Binance 수집기
 - [ ] Finnhub 수집기
-- [ ] 추천/전략 계층 고도화
 - [ ] 운영 배포 환경 분리
+
+### 구현 완료
+
+- [x] 추천/전략 계층 고도화 (MomentumStrategy, MeanReversionStrategy, RecommendationEngine)
 
 ---
 
@@ -148,6 +151,37 @@ GET /api/history?asset=BTC&from=2026-01-01&to=2026-03-27&interval=1d
 → 일별 종가 + 거래량 + 다른 자산 대비 상대 수익률
 ```
 
+### 5. 포트폴리오 추천 — "지금 뭘 할까?"
+
+**Strategy Pattern 기반 다중 전략 추천 엔진**
+
+```
+GET /api/recommendations
+GET /api/recommendations/symbol/BTC
+
+→ 응답:
+{
+  "symbol": "BTC",
+  "action": "STRONG_BUY",
+  "actionLabel": "강력 매수",
+  "confidence": 0.8,
+  "confidenceLevel": "high",
+  "reasons": [
+    "현재 가격: 100.00 (변화율: 6.50%, 움직임: UP)",
+    "Momentum Strategy: 강력 매수 (신뢰도: 100%)",
+    "Mean Reversion Strategy: 약간의 매도 (신뢰도: 40%)"
+  ],
+  "analyzedAt": "2026-05-04T12:34:56"
+}
+```
+
+**구현 전략:**
+- `MomentumStrategy`: 현재 추세 + 변화율 기반 → 상승 추세 시 매수
+- `MeanReversionStrategy`: 극단값 → 평균 회귀 예상 (극상승 시 매도)
+- `RecommendationEngine`: 여러 전략의 가중 평균으로 최종 결정 (confidence 포함)
+
+**추천 액션 5단계:** STRONG_BUY → BUY → HOLD → SELL → STRONG_SELL
+
 ---
 
 ## WebFlux 활용 포인트 (파라메타 NFT 마켓플레이스 경험 연장)
@@ -183,7 +217,12 @@ asset-radar/
 │   ├── analysis/            # 분석/비교 로직
 │   │   ├── AssetComparator.java       (자산 간 수익률 비교)
 │   │   ├── AlertEvaluator.java        (알림 조건 평가)
-│   │   └── TrendAnalyzer.java         (추세 분석)
+│   │   ├── TrendAnalyzer.java         (추세 분석)
+│   │   └── recommendation/            (추천 엔진)
+│   │       ├── RecommendationStrategy.java   (전략 인터페이스)
+│   │       ├── MomentumStrategy.java         (모멘텀 전략)
+│   │       ├── MeanReversionStrategy.java    (평균회귀 전략)
+│   │       └── RecommendationEngine.java     (최종 추천 생성)
 │   │
 │   ├── api/                 # REST API + SSE
 │   │   ├── DashboardController.java

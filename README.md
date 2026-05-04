@@ -155,6 +155,8 @@ flowchart LR
 - [x] `GET /api/compare`
 - [x] `GET /api/analysis`
 - [x] `GET /api/analysis/history`
+- [x] `GET /api/recommendations`
+- [x] `GET /api/recommendations/symbol/{symbol}`
 - [x] `GET /api/alerts`
 - [x] `GET /api/alerts/history`
 - [x] `GET /api/statistics/moving-average`

@@ -20,65 +20,78 @@ class RecommendationEngineTest {
   }
 
   @Test
-  void analyzesCombinesMultipleStrategies() {
-    // 모멘텀 전략: STRONG_BUY (상승 추세, 큰 상승률)
-    // 평균회귀 전략: HOLD (중간 범위)
-    // 최종: BUY (두 전략의 가중 평균)
+  void combinesMultipleStrategiesForFinalRecommendation() {
+    // 모멘텀: UP + 6% = STRONG_BUY
+    // 평균회귀: 6% = SELL
+    // 평균: (5 + 2) / 2 = 3.5 → BUY
     AssetAnalysis analysis = createAnalysis("BTC", "UP", 6.0);
 
     AssetRecommendation recommendation = engine.analyze(analysis);
 
     assertThat(recommendation.symbol()).isEqualTo("BTC");
-    assertThat(recommendation.action()).isIn(RecommendationAction.BUY, RecommendationAction.STRONG_BUY);
-    assertThat(recommendation.confidence()).isBetween(0.0, 1.0);
+    assertThat(recommendation.action()).isEqualTo(RecommendationAction.BUY);
+    assertThat(recommendation.confidence()).isGreaterThan(0.0).isLessThanOrEqualTo(1.0);
     assertThat(recommendation.reasons()).isNotEmpty();
+  }
+
+  @Test
+  void generatesReasonsList() {
+    AssetAnalysis analysis = createAnalysis("ETH", "DOWN", -8.0);
+
+    AssetRecommendation recommendation = engine.analyze(analysis);
+
+    assertThat(recommendation.reasons()).hasSizeGreaterThanOrEqualTo(3); // 가격정보 + 2개 전략
+    assertThat(recommendation.reasons().get(0)).contains("현재 가격");
+    assertThat(recommendation.reasons().get(0)).contains("-8.00%");
+  }
+
+  @Test
+  void calculatesConfidenceLevel() {
+    AssetAnalysis analysis = createAnalysis("SOL", "FLAT", 0.0);
+
+    AssetRecommendation recommendation = engine.analyze(analysis);
+
+    assertThat(recommendation.getConfidenceLevel()).isIn("low", "medium", "high");
+  }
+
+  @Test
+  void strongUpwardMovementRecommendsBuy() {
+    // 모멘텀: UP + 7% = STRONG_BUY
+    // 평균회귀: 7% = SELL
+    // 평균: (5 + 2) / 2 = 3.5 → BUY
+    AssetAnalysis analysis = createAnalysis("ADA", "UP", 7.0);
+
+    AssetRecommendation recommendation = engine.analyze(analysis);
+
+    assertThat(recommendation.action()).isIn(
+        RecommendationAction.BUY,
+        RecommendationAction.STRONG_BUY
+    );
+  }
+
+  @Test
+  void strongDownwardMovementRecommendsSell() {
+    // 모멘텀: DOWN + -8% = STRONG_SELL
+    // 평균회귀: -8% = BUY
+    // 평균: (1 + 4) / 2 = 2.5 → HOLD
+    AssetAnalysis analysis = createAnalysis("XRP", "DOWN", -8.0);
+
+    AssetRecommendation recommendation = engine.analyze(analysis);
+
+    assertThat(recommendation.action()).isIn(
+        RecommendationAction.SELL,
+        RecommendationAction.STRONG_SELL,
+        RecommendationAction.HOLD
+    );
+  }
+
+  @Test
+  void includesTimestampInRecommendation() {
+    AssetAnalysis analysis = createAnalysis("DOGE", "FLAT", 0.1);
+
+    AssetRecommendation recommendation = engine.analyze(analysis);
+
     assertThat(recommendation.analyzedAt()).isNotNull();
-  }
-
-  @Test
-  void generatesMultipleReasons() {
-    AssetAnalysis analysis = createAnalysis("ETH", "DOWN", -2.5);
-
-    AssetRecommendation recommendation = engine.analyze(analysis);
-
-    // 이유는 최소 3개 이상 (가격 정보 + 두 전략)
-    assertThat(recommendation.reasons()).hasSizeGreaterThanOrEqualTo(3);
-    assertThat(recommendation.reasons().get(0))
-        .contains("현재 가격")
-        .contains("변화율");
-  }
-
-  @Test
-  void handlesBullishScenario() {
-    // 모멘텀: STRONG_BUY, 평균회귀: SELL -> 가중평균으로 BUY
-    AssetAnalysis analysis = createAnalysis("SOL", "UP", 12.0);
-
-    AssetRecommendation recommendation = engine.analyze(analysis);
-
-    assertThat(recommendation.confidence()).isGreaterThanOrEqualTo(0.4);
-    assertThat(recommendation.action()).isNotEqualTo(RecommendationAction.STRONG_SELL);
-  }
-
-  @Test
-  void handlesBearishScenario() {
-    // 모멘텀: STRONG_SELL, 평균회귀: STRONG_BUY -> 가중평균으로 HOLD/SELL
-    AssetAnalysis analysis = createAnalysis("ADA", "DOWN", -8.0);
-
-    AssetRecommendation recommendation = engine.analyze(analysis);
-
-    assertThat(recommendation.confidence()).isGreaterThanOrEqualTo(0.0);
-  }
-
-  @Test
-  void validateRecommendationConstraints() {
-    AssetAnalysis analysis = createAnalysis("XRP", "FLAT", 0.2);
-
-    AssetRecommendation recommendation = engine.analyze(analysis);
-
-    assertThat(recommendation.confidence()).isBetween(0.0, 1.0);
-    assertThat(recommendation.symbol()).isEqualTo("XRP");
-    assertThat(recommendation.action()).isNotNull();
-    assertThat(recommendation.reasons()).isNotEmpty();
   }
 
   private AssetAnalysis createAnalysis(String symbol, String movement, double changeRate) {

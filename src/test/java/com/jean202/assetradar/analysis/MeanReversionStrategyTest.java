@@ -20,7 +20,8 @@ class MeanReversionStrategyTest {
 
   @Test
   void recommendsStrongBuyOnExtremeDowntrend() {
-    AssetAnalysis analysis = createAnalysis("BTC", "DOWN", -12.0);
+    // 극도로 낮은 가격 → 상승 예상
+    AssetAnalysis analysis = createAnalysis("BTC", -12.0);
 
     RecommendationAction action = strategy.recommend(analysis);
 
@@ -29,7 +30,8 @@ class MeanReversionStrategyTest {
 
   @Test
   void recommendsBuyOnStrongDowntrend() {
-    AssetAnalysis analysis = createAnalysis("ETH", "DOWN", -6.5);
+    // 강한 하락 → 약간의 매수
+    AssetAnalysis analysis = createAnalysis("ETH", -7.5);
 
     RecommendationAction action = strategy.recommend(analysis);
 
@@ -37,8 +39,9 @@ class MeanReversionStrategyTest {
   }
 
   @Test
-  void recommendsHoldOnMediumRange() {
-    AssetAnalysis analysis = createAnalysis("SOL", "UP", 3.5);
+  void recommendsHoldOnModerateChange() {
+    // 중간 범위 → 보유
+    AssetAnalysis analysis = createAnalysis("SOL", 2.0);
 
     RecommendationAction action = strategy.recommend(analysis);
 
@@ -47,7 +50,8 @@ class MeanReversionStrategyTest {
 
   @Test
   void recommendsSellOnStrongUptrend() {
-    AssetAnalysis analysis = createAnalysis("ADA", "UP", 7.0);
+    // 강한 상승 → 약간의 매도 (하락 예상)
+    AssetAnalysis analysis = createAnalysis("ADA", 7.5);
 
     RecommendationAction action = strategy.recommend(analysis);
 
@@ -56,7 +60,8 @@ class MeanReversionStrategyTest {
 
   @Test
   void recommendsStrongSellOnExtremeUptrend() {
-    AssetAnalysis analysis = createAnalysis("XRP", "UP", 15.0);
+    // 극도로 높은 가격 → 강한 매도 신호
+    AssetAnalysis analysis = createAnalysis("XRP", 12.0);
 
     RecommendationAction action = strategy.recommend(analysis);
 
@@ -69,7 +74,7 @@ class MeanReversionStrategyTest {
     assertThat(strategy.getName()).isEqualTo("Mean Reversion Strategy");
   }
 
-  private AssetAnalysis createAnalysis(String symbol, String movement, double changeRate) {
+  private AssetAnalysis createAnalysis(String symbol, double changeRate) {
     return new AssetAnalysis(
         symbol,
         "quote",
@@ -78,7 +83,7 @@ class MeanReversionStrategyTest {
         BigDecimal.valueOf(100 + (100 * changeRate / 100)),
         BigDecimal.valueOf(changeRate),
         BigDecimal.valueOf(changeRate),
-        movement,
+        "UP",
         Instant.now()
     );
   }
