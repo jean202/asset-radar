@@ -7,12 +7,13 @@
 | 자산군 | 공급자 | 상태 | 수집 방식 | 기본 주기 / 특징 | 비고 |
 |------|------|------|----------|----------------|------|
 | 코인 | Upbit | 완료 | WebSocket | 실시간 | 기본 심볼: `KRW-BTC`, `KRW-ETH` |
-| 코인 | Binance | 미구현 | WebSocket 예정 | 실시간 예정 | `PROJECT_PLAN.md`에는 포함되어 있으나 아직 미연결 |
+| 코인 | Binance | 완료 | WebSocket | 실시간 | 기본 비활성화, 심볼: `btcusdt`, `ethusdt` |
 | 한국 주식 | 한국투자증권(KIS) | 완료 | API 호출 | 기본 3초 | 인증 키 필요 |
 | 미국 주식 | Alpha Vantage | 완료 | API 호출 | 기본 1분 | 무료 플랜 지연 특성 반영 |
-| 미국 주식 | Finnhub | 미구현 | API 호출 예정 | 미정 | 대체 공급자 후보 |
+| 미국 주식 | Finnhub | 완료 | API 호출 | 기본 1분 | 기본 비활성화, API 키 필요 |
 | 금 | Gold API | 완료 | REST 폴링 | 기본 5분 | `XAU` 사용 |
 | 금 | 한국은행 API | 미구현 | REST 폴링 예정 | 미정 | 계획에는 남아 있으나 아직 미연결 |
+| 데모 | Synthetic | 완료 | Flux interval | 기본 2초 | `demo` 프로파일에서 외부 API 없이 생성 |
 
 ## 현재 기본 설정
 
@@ -21,17 +22,20 @@
 - 코인: `KRW-BTC`, `KRW-ETH`
 - 한국 주식: `005930`, `000660`
 - 미국 주식: `AAPL`, `NVDA`
+- Binance: `btcusdt`, `ethusdt` (기본 비활성화)
+- Finnhub: `AAPL`, `MSFT` (기본 비활성화)
 - 금: `XAU`
+- 데모: BTC, ETH, 005930, NVDA, XAU synthetic prices (`demo` 프로파일)
 
 ## 구현 메모
 
 - 모든 수집기는 최종적으로 `AssetCollector` 인터페이스 뒤에서 동일한 파이프라인으로 흘러간다.
 - 실시간 소스와 폴링 소스의 차이는 Collector 내부에서 흡수하고, 이후 단계에서는 `AssetPrice` 이벤트로 통일한다.
 - 무료 API 제약 때문에 미국 주식과 금은 코인보다 갱신 주기가 느리다.
+- `demo` 프로파일은 실제 수집기를 끄고 `DemoAssetCollector`만 활성화해 Kafka, Redis, PostgreSQL, SSE, React 화면을 API 키 없이 검증한다.
 
 ## 다음 작업
 
-- [ ] Binance 소스 추가
-- [ ] Finnhub 또는 대체 미국 주식 소스 추가
 - [ ] 한국은행 금 시세 소스 검토
 - [ ] 소스별 장애/지연 메트릭 문서화
+- [ ] 소스별 API rate limit과 유료/무료 플랜 차이 문서화

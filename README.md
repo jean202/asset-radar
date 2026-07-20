@@ -8,16 +8,22 @@
 flowchart LR
     subgraph SRC["External Sources"]
         UPBIT["Upbit WS"]
+        BINANCE["Binance WS"]
         GOLD["Gold API"]
         KIS["KIS<br/>한국주식"]
         AV["Alpha Vantage<br/>미국주식"]
+        FINN["Finnhub<br/>미국주식"]
+        DEMO["Demo synthetic<br/>profile"]
     end
 
     subgraph COL["Collectors (WebFlux)"]
         CC["CoinCollector"]
+        BC["BinanceCollector"]
         GC["GoldCollector"]
         SKR["StockKrCollector"]
         SUS["StockUsCollector"]
+        FHC["FinnhubCollector"]
+        DMC["DemoAssetCollector"]
     end
 
     subgraph KAFKA["Kafka Topics"]
@@ -57,14 +63,20 @@ flowchart LR
     end
 
     UPBIT --> CC
+    BINANCE --> BC
     GOLD --> GC
     KIS --> SKR
     AV --> SUS
+    FINN --> FHC
+    DEMO --> DMC
 
     CC --> T1
+    BC --> T1
     GC --> T1
     SKR --> T1
     SUS --> T1
+    FHC --> T1
+    DMC --> T1
 
     T1 --> PIPE
     T1 --> ANA
@@ -111,11 +123,11 @@ flowchart LR
 
 ## 상태 스냅샷
 
-기준일: 2026-04-04
+기준일: 2026-05-17
 
-- 현재 단계: 백엔드 MVP는 동작 가능한 수준까지 올라왔고, 프론트엔드 분석 화면과 문서 정리를 마무리하는 단계
-- 현재 워크트리 기준 포함 기능: 실시간 대시보드, 비교 API, 분석/알림 API, 통계 API, React 대시보드/애널리틱스 화면
-- 검증 결과: `./gradlew test` 통과, `cd frontend && npm run lint` 통과, `cd frontend && npm run test` 통과, `cd frontend && npm run build` 통과
+- 현재 단계: 백엔드/프론트엔드/관측 스택은 동작 가능한 상태이며, 실행 환경을 `local`, `docker`, `demo`, `prod` 프로파일로 분리했다.
+- 현재 워크트리 기준 포함 기능: 실시간 대시보드, 비교 API, 분석/알림 API, 통계 API, React 대시보드/애널리틱스 화면, API 키 없는 데모 데이터 흐름, Swagger 예시 응답, GHCR 기반 운영 배포 자동화
+- 검증 결과: `./gradlew test` 통과. 프론트엔드 변경 시에는 `cd frontend && npm run lint`, `cd frontend && npm run test`, `cd frontend && npm run build`를 함께 수행한다.
 
 ## 기능별 체크리스트
 
@@ -125,8 +137,9 @@ flowchart LR
 - [x] Gold API 기반 금 시세 폴링
 - [x] 한국투자증권(KIS) 기반 한국 주식 수집기
 - [x] Alpha Vantage 기반 미국 주식 수집기
-- [x] Binance WebSocket 연동 (btcusdt, ethusdt)
-- [x] Finnhub REST 연동 (US stocks)
+- [x] Binance WebSocket 연동 (`btcusdt`, `ethusdt`, 기본 비활성화)
+- [x] Finnhub REST 연동 (US stocks, 기본 비활성화)
+- [x] API 키 없이 실행 가능한 demo synthetic collector
 
 ### 파이프라인과 저장소
 
@@ -178,10 +191,12 @@ flowchart LR
 ### 운영과 품질
 
 - [x] 로컬 observability stack (`Prometheus + Grafana + Loki + Tempo + Alertmanager`)
+- [x] Spring profile 기반 환경 분리 (`local`, `docker`, `demo`, `prod`)
 - [x] GitHub Actions CI
+- [x] GitHub Actions 운영 배포 자동화
+- [x] 배포 타깃별 secret 주입 방식 확정 (`.env.prod` 런타임 주입)
 - [x] 백엔드 단위/웹/통합 테스트
 - [x] 프론트엔드 lint/test/build를 포함한 CI 품질 게이트
-- [ ] 운영 배포 스크립트와 환경 분리
 
 ## 실행
 
@@ -191,7 +206,7 @@ flowchart LR
 
 ```bash
 docker compose up -d kafka redis postgres prometheus grafana loki promtail tempo alertmanager
-./gradlew bootRun
+SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
 cd frontend
 npm install
 npm run dev
@@ -207,6 +222,22 @@ npm run dev
 - Alertmanager: `http://localhost:9093`
 
 로그는 `Promtail -> Loki`로 바로 수집되고, Prometheus alert rule은 Alertmanager까지 연결됩니다. Tempo는 OTLP 수집 엔드포인트까지 열어두었고, 애플리케이션 tracing exporter를 붙이면 Grafana에서 trace 조회까지 이어집니다.
+
+### 실행 프로파일
+
+| Profile | 용도 |
+|---------|------|
+| `local` | Kafka/Redis/PostgreSQL/관측 스택은 Docker, Spring Boot는 호스트에서 실행 |
+| `docker` | 전체 컨테이너 실행. `docker-compose.yml`의 기본 앱 프로파일 |
+| `demo` | 외부 API 수집기를 끄고 `DemoAssetCollector`가 합성 가격 데이터를 생성. `local,demo` 또는 `docker,demo`처럼 조합 |
+| `prod` | 운영형 환경변수 기반 설정. 접속 정보와 tracing endpoint를 명시적으로 주입 |
+
+API 키 없이 데이터 흐름을 확인하려면 다음처럼 실행합니다.
+
+```bash
+docker compose up -d kafka redis postgres prometheus grafana loki promtail tempo alertmanager
+SPRING_PROFILES_ACTIVE=local,demo ./gradlew bootRun
+```
 
 알림 채널 설정 예시:
 
@@ -236,6 +267,31 @@ docker compose up --build
 
 - 백엔드: `http://localhost:8081`
 - 프론트엔드: `http://localhost:3001`
+
+API 키 없는 전체 컨테이너 데모는 다음 명령으로 실행합니다.
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+```
+
+### 운영 배포
+
+운영 배포는 GitHub Actions가 API/프론트엔드 이미지를 GHCR에 푸시한 뒤, SSH로 운영 서버의 Docker Compose 스택을 갱신하는 방식입니다.
+
+- 워크플로우: `.github/workflows/deploy.yml`
+- 운영 compose: `deploy/docker-compose.prod.yml`
+- secret 주입: 운영 서버의 `/opt/asset-radar/.env.prod` 런타임 환경변수
+- 템플릿: `deploy/.env.prod.example`
+
+애플리케이션 secret은 이미지 빌드나 GitHub Actions 환경에 넣지 않습니다. Actions에는 배포 전송에 필요한 `PROD_SSH_*` 값과, GHCR package가 private일 때만 `GHCR_USERNAME`, `GHCR_TOKEN`을 둡니다. KIS, Alpha Vantage, Finnhub, 알림 webhook, DB 비밀번호는 운영 서버의 `.env.prod`에서만 관리합니다.
+
+```bash
+ssh "$PROD_SSH_USER@$PROD_SSH_HOST" 'sudo mkdir -p /opt/asset-radar && sudo chown "$USER" /opt/asset-radar'
+scp deploy/.env.prod.example "$PROD_SSH_USER@$PROD_SSH_HOST:/opt/asset-radar/.env.prod"
+ssh "$PROD_SSH_USER@$PROD_SSH_HOST" 'vi /opt/asset-radar/.env.prod'
+```
+
+상세 절차는 [`deploy/README.md`](deploy/README.md)를 참고하세요.
 
 ## 주요 API
 
@@ -329,11 +385,10 @@ GET /api/recommendations/symbol/{symbol}
 - `docs/architecture.md`
 - `docs/data-sources.md`
 - `docs/decision-log.md`
+- `deploy/README.md`
 - `PROJECT_PLAN.md`
 - `frontend/README.md`
 
 ## 현재 남은 작업
 
-- 운영 배포 스크립트와 환경 분리
-- Swagger 예시 응답 추가 정리
-- README 스크린샷 추가 (사용자 환경에서 캡처)
+- Grafana 운영 대시보드 스크린샷과 장애 진단 runbook 보강

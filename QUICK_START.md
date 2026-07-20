@@ -1,6 +1,19 @@
 # Asset-Radar Quick Start
 
-## 🎯 Start Everything (3 Terminals)
+## Start Everything
+
+### Demo mode, no external API keys
+
+```bash
+cd /Users/jean325/portfolio/projects/asset-radar
+docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+```
+
+- Frontend: `http://localhost:3001`
+- API Docs: `http://localhost:8081/swagger-ui/index.html`
+- Grafana: `http://localhost:3000`
+
+### Local development, 3 terminals
 
 **Terminal 1 - Backend & Infrastructure:**
 ```bash
@@ -20,6 +33,12 @@ cd /Users/jean325/portfolio/projects/asset-radar
 ./test-e2e.sh
 ```
 
+For local demo data, run Terminal 1 with:
+
+```bash
+SPRING_PROFILES_ACTIVE=local,demo ./start-dev.sh
+```
+
 ## 🌐 Open in Browser
 
 | Service | URL | Purpose |
@@ -34,7 +53,7 @@ cd /Users/jean325/portfolio/projects/asset-radar
 ### Dashboard (localhost:5173)
 - **Live/Connecting** status badge (top)
 - **Stats**: Asset count, sources, history size, active alerts
-- **Asset Tables**: Grouped by source (Upbit, Binance, Gold, KIS, etc.)
+- **Asset Tables**: Grouped by source (Upbit, Binance, Gold, KIS, Alpha Vantage, Finnhub, or demo-generated equivalents)
   - Symbol, currency, price, 24h change (%), updated timestamp
   - Real-time updates via SSE every few seconds
 - **Portfolio Recommendations**: NEW! ✨
@@ -114,7 +133,7 @@ Test with local webhook server:
 
 ```bash
 # Terminal 4
-python3 /Users/jean325/portfolio/projects/asset-radar/simple-webhook.py 9090
+python3 /Users/jean325/portfolio/projects/asset-radar/test-webhook-server.py 9090
 
 # Then in backend Terminal 1 environment:
 export ASSET_RADAR_ALERT_SLACK_WEBHOOK_URL='http://localhost:9090/webhook'
@@ -154,19 +173,32 @@ docker compose ps
 docker compose down
 ```
 
+## 🚢 Production Deploy
+
+Production deployment is automated by GitHub Actions:
+
+- Workflow: `.github/workflows/deploy.yml`
+- Runtime compose: `deploy/docker-compose.prod.yml`
+- Runtime secrets: `/opt/asset-radar/.env.prod` on the production host
+
+See `deploy/README.md` for first-time server setup and required GitHub secrets.
+
 ## 📝 Key Files
 
 | File | Purpose |
 |------|---------|
-| `src/main/java/com/jean202/assetradar/recommendation/` | Java strategy classes |
+| `src/main/java/com/jean202/assetradar/analysis/recommendation/` | Java strategy classes |
 | `src/main/java/com/jean202/assetradar/api/AssetRecommendationController.java` | API endpoints |
+| `src/main/java/com/jean202/assetradar/collector/DemoAssetCollector.java` | API-key-free synthetic data collector |
+| `src/main/resources/application-demo.yml` | Demo profile that disables real collectors |
 | `frontend/src/pages/Dashboard.jsx` | React dashboard component |
 | `frontend/src/App.css` | Styling including recommendation cards |
+| `deploy/README.md` | Production deployment and secret injection guide |
 | `VERIFICATION_GUIDE.md` | Detailed testing walkthrough |
 
 ## 💡 Tips
 
-- **First run**: Collectors take 30-60 seconds to warm up. If no data, wait a bit.
+- **First run**: Real collectors can take 30-60 seconds to warm up. Demo mode emits data immediately.
 - **Real-time updates**: Watch recommendation cards change as prices move
 - **Colors tell the story**: Green = bullish, Red = bearish, Blue = mixed signals
 - **Confidence matters**: High confidence recommendations are more reliable
@@ -177,4 +209,4 @@ docker compose down
 - See full details: `VERIFICATION_GUIDE.md`
 - Architecture: `docs/architecture.md`
 - API documentation: http://localhost:8080/swagger-ui/index.html
-- Strategy code: `src/main/java/com/jean202/assetradar/recommendation/strategies/`
+- Strategy code: `src/main/java/com/jean202/assetradar/analysis/recommendation/`

@@ -7,6 +7,12 @@ import com.jean202.assetradar.query.DashboardHistoryMetrics;
 import com.jean202.assetradar.query.DashboardHistoryMetricsReader;
 import com.jean202.assetradar.query.LatestAssetPriceReader;
 import com.jean202.assetradar.query.LatestAssetQuery;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -26,6 +32,7 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/api/dashboard")
+@Tag(name = "Dashboard", description = "실시간 대시보드 조회와 SSE 스트림")
 public class DashboardController {
     private static final Map<String, SourceMetadata> SOURCE_METADATA = Map.of(
             "UPBIT", new SourceMetadata("업비트", "COIN", "코인"),
@@ -81,6 +88,16 @@ public class DashboardController {
     }
 
     @GetMapping
+    @Operation(summary = "대시보드 스냅샷 조회", description = "최신 자산 가격, 소스별 그룹, 이력 테이블 상태를 한 번에 조회합니다.")
+    @ApiResponse(
+            responseCode = "200",
+            description = "대시보드 스냅샷",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = DashboardResponse.class),
+                    examples = @ExampleObject(name = "live-dashboard", value = OpenApiExamples.DASHBOARD)
+            )
+    )
     public Mono<DashboardResponse> dashboard() {
         Mono<List<AssetPrice>> latestAssets = latestAssetPriceReader.readLatest(new LatestAssetQuery(null, null, List.of()))
                 .collectList();
@@ -91,6 +108,15 @@ public class DashboardController {
     }
 
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @Operation(summary = "대시보드 가격 SSE 스트림", description = "현재 메모리 스냅샷 이후 새로 수집되는 가격 이벤트를 Server-Sent Events로 전송합니다.")
+    @ApiResponse(
+            responseCode = "200",
+            description = "asset-price 이벤트 스트림",
+            content = @Content(
+                    mediaType = MediaType.TEXT_EVENT_STREAM_VALUE,
+                    examples = @ExampleObject(name = "asset-price-event", value = OpenApiExamples.DASHBOARD_STREAM)
+            )
+    )
     public Flux<ServerSentEvent<AssetPrice>> stream() {
         return Flux.fromIterable(assetPriceStore.snapshot())
                 .concatWith(assetPriceStore.stream())

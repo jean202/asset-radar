@@ -1,0 +1,16 @@
+asset-radar:
+  demo:
+    enabled: true
+    refresh-interval: 2s
+  coin:
+    enabled: false
+  stock-kr:
+    enabled: false
+  stock-us:
+    enabled: false
+  binance:
+    enabled: false
+  finnhub:
+    enabled: false
+  gold:
+    enabled: false

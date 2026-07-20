@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Start asset-radar development environment
-# Prerequisites: Docker Desktop, Java 21, Node.js
+# Prerequisites: Docker Desktop, Java 17+, Node.js
 
 set -e
 
@@ -27,7 +27,9 @@ echo ""
 # Step 2: Start backend
 echo "3️⃣  Starting backend (Spring Boot)..."
 cd "$PROJECT_DIR"
+export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-local}"
 echo "   Running: ./gradlew bootRun"
+echo "   Active profiles: $SPRING_PROFILES_ACTIVE"
 echo ""
 echo "   Backend will start at: http://localhost:8080"
 echo "   API Swagger UI: http://localhost:8080/swagger-ui/index.html"

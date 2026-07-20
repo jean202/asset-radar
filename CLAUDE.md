@@ -1,39 +1,67 @@
-# asset-radar — Claude 작업 메모
+<!-- AGENTS.md 와 CLAUDE.md 는 동일하게 유지됩니다. 한쪽을 수정하면 다른 쪽도 같이 수정하세요. -->
+# asset-radar — 작업 메모
 
 ## 다음 작업 시작 시 가장 먼저 제안할 것
 
-### 알림 채널 실동작 확인
+### Grafana 운영 증거 보강
 
-- `webhook-notify` 연동이 이미 들어가 있으므로, 다음 `asset-radar` 작업을 시작하면 **다른 기능 작업보다 먼저** Slack/Discord 알림 실동작 검증을 제안할 것
-- 아직 웹훅 env가 비어 있으면 아래 값을 먼저 준비하도록 안내할 것
-  - `ASSET_RADAR_ALERT_SLACK_WEBHOOK_URL`
-  - `ASSET_RADAR_ALERT_DISCORD_WEBHOOK_URL`
-  - `ASSET_RADAR_ALERT_NOTIFIER_SLACK_ENABLED=true`
-  - `ASSET_RADAR_ALERT_NOTIFIER_DISCORD_ENABLED=true`
-- 기본 운영 기준도 함께 상기할 것
-  - Slack: `CRITICAL`만 전송
-  - Discord: `WARN` 이상 전송
-  - `INFO`: 외부 채널 전송 없음
-- 사용자가 아직 웹훅을 넣지 않았다면, 다음 액션으로는 기능 개발보다 먼저
-  1. env 설정
-  2. `asset-radar` 실행
-  3. 실제 알림 발생 시나리오 1회 검증
-  를 제안할 것
-- 사용자가 “다음 뭐 하지?” 또는 일반적인 `asset-radar` 작업을 요청하면, Claude는 우선순위 1번으로 이 검증 작업부터 추천할 것
+- `Prometheus + Grafana + Loki + Tempo + Alertmanager` 스택은 구성되어 있으므로, 다음 포트폴리오 보강 작업은 운영 화면 캡처와 runbook 정리가 적합하다.
+- demo profile로도 데이터가 흐르므로 외부 API 키 없이 Grafana 캡처를 만들 수 있다.
+- 목적: README의 기능 스크린샷 다음 단계로 운영 관측 가능성까지 보여준다.
+- 권장 캡처 후보:
+  1. Grafana dashboard (`http://localhost:3000`) — API latency, collector count, alert metrics
+  2. Prometheus alert rule 화면 (`http://localhost:9090`) — alert rule 로딩 상태
+  3. Loki log query 화면 — `service=asset-radar` 기준 collector/API 로그
 
-## 진행 중인 TODO
+## 완료된 TODO
 
-### README에 동작 스크린샷 추가 (보류 — 사용자가 직접 캡처 예정)
+### README에 동작 스크린샷 추가
 
-- **상태**: 사용자가 자기 환경에서 실행한 뒤 캡처해서 넣기로 함 (2026-04-08 결정)
-- **목적**: README 최상단의 mermaid 아키텍처 다이어그램 옆/아래에 "정말 동작한다"는 시각적 증거를 박아 포폴 첫 카드의 설득력을 한 단계 올린다.
-- **권장 캡처 후보** (최소 1장, 최대 3장):
-  1. React Dashboard 실시간 화면 (`http://localhost:5173` 또는 `http://localhost:3001`) — 다중 자산 카드 + SSE 실시간 갱신이 보이는 시점
-  2. Analytics 화면 — 차트/통계 컴포넌트가 실제 데이터로 그려진 상태
-  3. Grafana 대시보드 (`http://localhost:3000`) — Micrometer/Prometheus 메트릭이 흐르는 모습 (운영 관점 증명)
-- **저장 위치 권장**: `docs/screenshots/` 폴더 신규 생성 후 그 안에 PNG로 보관
-- **README 삽입 위치 권장**: 현재 `## Architecture` 섹션 바로 아래, `## 상태 스냅샷` 위. 새 섹션 `## Screenshots` 또는 `## Live Preview`로 추가
-- **사용자가 캡처 파일을 넣어두면 Claude가 할 일**:
-  1. `docs/screenshots/` 안의 파일명 확인
-  2. README에 적절한 alt text와 함께 ![](docs/screenshots/xxx.png) 형식으로 삽입
-  3. 각 스크린샷 1줄 캡션 (어떤 기능/화면인지)
+- **완료일**: 2026-05-17 기준 README에 반영됨
+- **파일**:
+  - `docs/screenshots/dashboard_1.png`
+  - `docs/screenshots/dashboard_2.png`
+  - `docs/screenshots/analytics.png`
+- **삽입 위치**: `## Architecture` 아래 `## Screenshots`
+
+### 실행 환경 분리와 데모 모드
+
+- **완료일**: 2026-05-17
+- **프로파일**:
+  - `local`: Docker 인프라 + 호스트 Spring Boot
+  - `docker`: 전체 Compose 실행 기본값
+  - `demo`: 외부 API 수집기를 끄고 synthetic data 생성
+  - `prod`: 운영형 환경변수 기반 설정
+- **관련 파일**:
+  - `src/main/resources/application-local.yml`
+  - `src/main/resources/application-docker.yml`
+  - `src/main/resources/application-demo.yml`
+  - `src/main/resources/application-prod.yml`
+  - `docker-compose.demo.yml`
+  - `DemoAssetCollector`
+
+### Swagger 예시 응답 추가 정리
+
+- **완료일**: 2026-06-24
+- **내용**:
+  - 주요 REST API의 성공/에러 Swagger response example 정리
+  - 응답 DTO와 도메인 record의 `@Schema` 설명/예시 보강
+- **관련 파일**:
+  - `src/main/java/com/jean202/assetradar/api/OpenApiExamples.java`
+  - `src/main/java/com/jean202/assetradar/api/*Response.java`
+  - `src/main/java/com/jean202/assetradar/domain/AssetPrice.java`
+  - `src/main/java/com/jean202/assetradar/domain/AssetAnalysis.java`
+  - `src/main/java/com/jean202/assetradar/domain/AssetAlert.java`
+
+### 운영 배포 자동화와 secret 주입 방식 확정
+
+- **완료일**: 2026-06-24
+- **결정**:
+  - GitHub Actions가 API/프론트엔드 이미지를 GHCR에 빌드/푸시
+  - 운영 서버는 SSH로 `deploy/docker-compose.prod.yml`을 갱신하고 Docker Compose로 재기동
+  - KIS, Alpha Vantage, Finnhub, 알림 webhook, DB 비밀번호는 운영 서버의 `.env.prod`에서 런타임 주입
+- **관련 파일**:
+  - `.github/workflows/deploy.yml`
+  - `deploy/docker-compose.prod.yml`
+  - `deploy/.env.prod.example`
+  - `deploy/README.md`

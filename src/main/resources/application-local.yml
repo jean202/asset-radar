@@ -1,0 +1,16 @@
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+  data:
+    redis:
+      host: localhost
+      port: 6380
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5433/asset_radar
+    username: asset_radar
+    password: asset_radar
+
+management:
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces

@@ -5,7 +5,7 @@ This guide walks through end-to-end verification of the portfolio recommendation
 ## 📋 Prerequisites
 
 - Docker Desktop running
-- Java 21 installed
+- Java 17+ installed
 - Node.js 18+ installed
 - Backend already built with: `./gradlew build`
 
@@ -16,6 +16,12 @@ Open **Terminal 1** and run:
 ```bash
 cd /Users/jean325/portfolio/projects/asset-radar
 ./start-dev.sh
+```
+
+To verify the full flow without external API keys, use the demo profile:
+
+```bash
+SPRING_PROFILES_ACTIVE=local,demo ./start-dev.sh
 ```
 
 This will:
@@ -95,7 +101,7 @@ curl http://localhost:8080/api/alerts?limit=3 | jq '.alerts[0]'
 2. You should see:
    - **Status badge**: "Live" or "Connecting..." (SSE connection status)
    - **Stats row**: Asset count, sources, history rows, alerts count
-   - **Source groups**: Assets grouped by source (Upbit, Binance, Gold API, etc.)
+   - **Source groups**: Assets grouped by source (Upbit, Binance, Gold API, KIS, Alpha Vantage, Finnhub, or demo-generated equivalents)
      - Each group shows: asset symbol, price, 24h change (color-coded ✅ green / ❌ red)
      - Updated timestamp (e.g., "just now", "5m ago")
    - **Portfolio Recommendations section** (if any price data exists):
@@ -153,7 +159,7 @@ export ASSET_RADAR_ALERT_NOTIFIER_DISCORD_ENABLED=true
 ```bash
 # Terminal 4
 cd /Users/jean325/portfolio/projects/asset-radar
-python3 simple-webhook.py 9090
+python3 test-webhook-server.py 9090
 ```
 
 Then set:
@@ -231,6 +237,7 @@ Final recommendation is the weighted combination with confidence score.
 
 ### "No price data yet"
 - Collectors are warming up on first run (takes 1-2 minutes)
+- Use `SPRING_PROFILES_ACTIVE=local,demo ./start-dev.sh` if you need immediate synthetic data without API keys
 - Check collector logs in backend terminal
 - Verify Kafka is running: `docker compose ps | grep kafka`
 
@@ -279,8 +286,9 @@ While testing, check operational dashboards:
 ## 🔗 Next Steps
 
 After verification:
-1. Deploy to production environment
+1. Capture Grafana/Prometheus/Loki operational evidence for the portfolio README
 2. Configure monitoring alerts in Alertmanager
-3. Set up persistent storage for historical data
-4. Add more data sources if needed
-5. Fine-tune strategy weights based on actual results
+3. Add more data sources if needed
+4. Fine-tune strategy weights based on actual results
+
+Production deployment is defined in `deploy/README.md`. Runtime secrets are injected from the production host's `.env.prod`, not from the image build.

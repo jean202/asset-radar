@@ -10,33 +10,29 @@
 
 ## 현재 진행 상태
 
-기준일: 2026-04-04
+기준일: 2026-05-17
 
 ### 완료
 
 - [x] Spring Boot 3 + WebFlux 기본 런타임
 - [x] Kafka, Redis, PostgreSQL, Prometheus, Grafana 로컬 스택
-- [x] Upbit, Gold API, KIS, Alpha Vantage 수집기
+- [x] Upbit, Binance, Gold API, KIS, Alpha Vantage, Finnhub 수집기
+- [x] API 키 없는 demo synthetic collector
 - [x] 대시보드, 최신/이력, 비교, 분석, 알림 API
 - [x] 통계 API: 이동평균, 변동성, 상관관계, 요약 통계
 - [x] React Dashboard / Analytics 화면
 - [x] 프론트엔드 ESLint 오류 정리
 - [x] 프론트엔드 테스트와 CI 품질 게이트
 - [x] 백엔드 테스트와 GitHub Actions CI
+- [x] `local`, `docker`, `demo`, `prod` 실행 프로파일 분리
+- [x] 추천/전략 계층 고도화 (MomentumStrategy, MeanReversionStrategy, RecommendationEngine)
+- [x] Swagger 주요 API 성공/에러 응답 예시와 응답 DTO `@Schema` 보강
+- [x] GHCR + SSH + Docker Compose 기반 운영 배포 자동화
+- [x] 운영 secret 주입 방식 확정 (`.env.prod` 런타임 주입)
 
 ### 진행 중
 
-- [ ] 문서와 실제 구현 상태 동기화 유지
-
-### 미구현
-
-- [ ] Binance 수집기
-- [ ] Finnhub 수집기
-- [ ] 운영 배포 환경 분리
-
-### 구현 완료
-
-- [x] 추천/전략 계층 고도화 (MomentumStrategy, MeanReversionStrategy, RecommendationEngine)
+- [ ] Grafana 운영 스크린샷과 장애 진단 runbook 보강
 
 ---
 
@@ -52,7 +48,7 @@
 | Monitoring | Micrometer + Grafana |
 | Container | Docker Compose |
 | Build | Gradle |
-| CI/CD | GitHub Actions |
+| CI/CD | GitHub Actions CI + GHCR 배포 |
 
 ---
 
@@ -63,12 +59,13 @@
 ```
 [데이터 소스]                    [수집 계층]              [처리 계층]           [제공 계층]
 
-Upbit WebSocket ──────→ CoinCollector ──→ ┐
-Binance WebSocket ────→ CoinCollector ──→ │
-한국투자증권 API ──────→ StockKrCollector → ├─→ [Kafka] ──→ [Consumer 집계/분석] ──→ Redis Cache
-Alpha Vantage API ────→ StockUsCollector → │                      │                    │
-한국은행 API ──────────→ GoldCollector ──→ ┘                      ↓                    ↓
-                                                          PostgreSQL          REST API
+Upbit WebSocket ──────→ CoinCollector ───────→ ┐
+Binance WebSocket ────→ BinanceCollector ─────→ │
+한국투자증권 API ──────→ StockKrCollector ─────→ ├─→ [Kafka] ──→ [Consumer 집계/분석] ──→ Redis Cache
+Alpha Vantage API ────→ StockUsCollector ─────→ │                      │                    │
+Finnhub REST ─────────→ FinnhubCollector ─────→ │                      │                    │
+Gold API ─────────────→ GoldCollector ─────────→ │                      ↓                    ↓
+Demo synthetic ───────→ DemoAssetCollector ───→ ┘              PostgreSQL          REST API
                                                           (이력 저장)         SSE (실시간 푸시)
 ```
 
@@ -76,11 +73,8 @@ Alpha Vantage API ────→ StockUsCollector → │                      
 
 | 토픽 | 데이터 | 갱신 주기 |
 |------|--------|----------|
-| `asset.coin.realtime` | BTC, ETH 등 코인 시세 | 실시간 (WebSocket) |
-| `asset.stock.kr` | 한국 주식 시세 | 실시간 (한국투자증권 API) |
-| `asset.stock.us` | 미국 주식 시세 | 15분 지연 (Alpha Vantage 무료) |
-| `asset.gold` | 금 시세 | 시간별 폴링 (한국은행 API) |
-| `asset.analysis` | 비교 분석 결과 | Consumer 처리 후 발행 |
+| `asset.price.realtime` | 모든 수집기의 `AssetPrice` 이벤트 | 소스별 상이 |
+| `asset.price.analysis` | 분석 결과 이벤트 | 가격 이벤트 처리 후 발행 |
 
 ---
 
@@ -90,18 +84,18 @@ Alpha Vantage API ────→ StockUsCollector → │                      
 
 | 자산 | API | 수집 방식 | 갱신 주기 | 비고 |
 |------|-----|----------|----------|------|
-| 코인 | Upbit WebSocket, Binance WebSocket | WebSocket 스트림 → WebFlux | 실시간 | 가장 접근성 좋음 |
+| 코인 | Upbit WebSocket, Binance WebSocket | WebSocket 스트림 → WebFlux | 실시간 | Binance는 기본 비활성화 |
 | 한국 주식 | 한국투자증권 Open API | REST 폴링 / WebSocket | 실시간 | 개인 계좌 필요, 초당 호출 제한 |
-| 미국 주식 | Alpha Vantage 또는 Finnhub | REST 폴링 | 15분 지연 (무료) | 실시간은 유료 |
-| 금 | 한국은행 Open API, Gold API | REST 폴링 | 일별/시간별 | 실시간은 어려움 |
+| 미국 주식 | Alpha Vantage, Finnhub | REST 폴링 | 무료 플랜 지연 가능 | Finnhub는 기본 비활성화 |
+| 금 | Gold API | REST 폴링 | 기본 5분 | 실시간은 어려움 |
+| 데모 | Synthetic | Flux interval | 기본 2초 | API 키 없는 포트폴리오 재현용 |
 
 ### Collector 공통 인터페이스
 
 ```java
 public interface AssetCollector {
     Flux<AssetPrice> collect();          // 리액티브 스트림으로 통일
-    AssetType getAssetType();
-    Duration getRefreshInterval();       // 소스별 갱신 주기
+    String sourceName();                 // metric/log tag
 }
 ```
 
@@ -204,15 +198,19 @@ asset-radar/
 ├── src/main/java/
 │   ├── collector/           # 데이터 수집 (자산별 Collector)
 │   │   ├── AssetCollector.java        (공통 인터페이스)
-│   │   ├── CoinCollector.java         (Upbit/Binance WebSocket)
+│   │   ├── CoinCollector.java         (Upbit WebSocket)
+│   │   ├── BinanceCollector.java      (Binance WebSocket)
 │   │   ├── StockKrCollector.java      (한국투자증권 API)
 │   │   ├── StockUsCollector.java      (Alpha Vantage)
-│   │   └── GoldCollector.java         (한국은행 API)
+│   │   ├── FinnhubCollector.java      (Finnhub REST)
+│   │   ├── GoldCollector.java         (Gold API)
+│   │   └── DemoAssetCollector.java    (demo profile synthetic data)
 │   │
 │   ├── pipeline/            # Kafka Producer/Consumer
-│   │   ├── AssetProducer.java
-│   │   ├── AssetConsumer.java
-│   │   └── AnalysisProcessor.java     (비교 분석 로직)
+│   │   ├── CollectorPipeline.java
+│   │   ├── AssetPriceSink.java
+│   │   ├── AssetPriceStore.java
+│   │   └── AnalysisProcessor.java     (가격 이벤트 필터/중복 제거)
 │   │
 │   ├── analysis/            # 분석/비교 로직
 │   │   ├── AssetComparator.java       (자산 간 수익률 비교)
@@ -231,8 +229,9 @@ asset-radar/
 │   │
 │   ├── domain/              # 도메인 모델
 │   │   ├── AssetPrice.java
-│   │   ├── AssetType.java
-│   │   └── ComparisonResult.java
+│   │   ├── AssetAnalysis.java
+│   │   ├── AssetAlert.java
+│   │   └── AssetRecommendation.java
 │   │
 │   └── infra/               # Redis, PostgreSQL, 알림
 │       ├── RedisAssetCache.java

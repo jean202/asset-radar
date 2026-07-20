@@ -26,6 +26,9 @@ spring:
     password: asset_radar
 
 asset-radar:
+  demo:
+    enabled: false
+    refresh-interval: 2s
   coin:
     enabled: true
     websocket-url: wss://api.upbit.com/websocket/v1

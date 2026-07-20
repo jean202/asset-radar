@@ -7,6 +7,13 @@ import com.jean202.assetradar.query.AssetCompareQuery;
 import com.jean202.assetradar.query.AssetStatisticsReader;
 import com.jean202.assetradar.query.CorrelationQuery;
 import com.jean202.assetradar.query.StatisticsQuery;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
@@ -21,6 +28,7 @@ import java.util.regex.Pattern;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -30,6 +38,7 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/api/statistics")
+@Tag(name = "Statistics", description = "이동평균, 변동성, 상관관계, 요약 통계")
 public class AssetStatisticsController {
     private static final Pattern PERIOD_PATTERN = Pattern.compile("(?i)^(\\d+)([SMHDW])$");
 
@@ -49,14 +58,41 @@ public class AssetStatisticsController {
     }
 
     @GetMapping("/moving-average")
+    @Operation(summary = "이동평균 조회", description = "가격 이력으로 SMA 또는 EMA 이동평균 시계열을 계산합니다.")
+    @ApiResponse(
+            responseCode = "200",
+            description = "이동평균 결과",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = MovingAverageResponse.class),
+                    examples = @ExampleObject(name = "moving-average", value = OpenApiExamples.MOVING_AVERAGE)
+            )
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "잘못된 기간, 날짜 또는 query param",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = ApiErrorResponse.class),
+                    examples = @ExampleObject(name = "invalid-period", value = OpenApiExamples.ERROR_INVALID_STATISTICS_PERIOD)
+            )
+    )
     public Mono<MovingAverageResponse> movingAverage(
+            @Parameter(description = "자산 심볼", example = "BTC", required = true)
             @RequestParam String symbol,
+            @Parameter(description = "데이터 소스", example = "UPBIT")
             @RequestParam(required = false) String source,
+            @Parameter(description = "기준 통화", example = "KRW")
             @RequestParam(required = false) String quoteCurrency,
+            @Parameter(description = "이동평균 타입. SMA 또는 EMA", example = "SMA")
             @RequestParam(defaultValue = "SMA") String type,
+            @Parameter(description = "계산 윈도우 크기", example = "20")
             @RequestParam(defaultValue = "20") int window,
+            @Parameter(description = "조회 기간. 예: 30d, 12h, 15m", example = "30d")
             @RequestParam(required = false) String period,
+            @Parameter(description = "명시적 시작 시각, ISO-8601", example = "2026-04-17T10:15:00Z")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
+            @Parameter(description = "명시적 종료 시각, ISO-8601", example = "2026-05-17T10:15:00Z")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to
     ) {
         Instant resolvedTo = to == null ? Instant.now(clock) : to;
@@ -69,13 +105,39 @@ public class AssetStatisticsController {
     }
 
     @GetMapping("/volatility")
+    @Operation(summary = "변동성 조회", description = "가격 이력 수익률의 rolling standard deviation과 연율화 변동성을 계산합니다.")
+    @ApiResponse(
+            responseCode = "200",
+            description = "변동성 결과",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = VolatilityResponse.class),
+                    examples = @ExampleObject(name = "volatility", value = OpenApiExamples.VOLATILITY)
+            )
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "잘못된 기간, 날짜 또는 query param",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = ApiErrorResponse.class),
+                    examples = @ExampleObject(name = "invalid-period", value = OpenApiExamples.ERROR_INVALID_STATISTICS_PERIOD)
+            )
+    )
     public Mono<VolatilityResponse> volatility(
+            @Parameter(description = "자산 심볼", example = "BTC", required = true)
             @RequestParam String symbol,
+            @Parameter(description = "데이터 소스", example = "UPBIT")
             @RequestParam(required = false) String source,
+            @Parameter(description = "기준 통화", example = "KRW")
             @RequestParam(required = false) String quoteCurrency,
+            @Parameter(description = "rolling volatility 윈도우 크기", example = "20")
             @RequestParam(defaultValue = "20") int window,
+            @Parameter(description = "조회 기간. 예: 30d, 12h, 15m", example = "30d")
             @RequestParam(required = false) String period,
+            @Parameter(description = "명시적 시작 시각, ISO-8601", example = "2026-04-17T10:15:00Z")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
+            @Parameter(description = "명시적 종료 시각, ISO-8601", example = "2026-05-17T10:15:00Z")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to
     ) {
         Instant resolvedTo = to == null ? Instant.now(clock) : to;
@@ -88,12 +150,37 @@ public class AssetStatisticsController {
     }
 
     @GetMapping("/correlation")
+    @Operation(summary = "상관관계 조회", description = "여러 자산의 수익률을 timestamp 기준으로 정렬해 Pearson correlation을 계산합니다.")
+    @ApiResponse(
+            responseCode = "200",
+            description = "상관관계 결과",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = CorrelationResponse.class),
+                    examples = @ExampleObject(name = "correlation", value = OpenApiExamples.CORRELATION)
+            )
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "잘못된 assets, 기간, 날짜 또는 query param",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = ApiErrorResponse.class),
+                    examples = @ExampleObject(name = "invalid-period", value = OpenApiExamples.ERROR_INVALID_STATISTICS_PERIOD)
+            )
+    )
     public Mono<CorrelationResponse> correlation(
+            @Parameter(description = "`SYMBOL` 또는 `SOURCE:QUOTE:SYMBOL` 형식의 자산 목록", example = "UPBIT:KRW:BTC,UPBIT:KRW:ETH", required = true)
             @RequestParam List<String> assets,
+            @Parameter(description = "assets가 SYMBOL만 포함할 때 적용할 기본 source", example = "UPBIT")
             @RequestParam(required = false) String source,
+            @Parameter(description = "assets가 SYMBOL만 포함할 때 적용할 기본 quoteCurrency", example = "KRW")
             @RequestParam(required = false) String quoteCurrency,
+            @Parameter(description = "조회 기간. 예: 30d, 12h, 15m", example = "30d")
             @RequestParam(required = false) String period,
+            @Parameter(description = "명시적 시작 시각, ISO-8601", example = "2026-04-17T10:15:00Z")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
+            @Parameter(description = "명시적 종료 시각, ISO-8601", example = "2026-05-17T10:15:00Z")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to
     ) {
         Instant resolvedTo = to == null ? Instant.now(clock) : to;
@@ -115,12 +202,37 @@ public class AssetStatisticsController {
     }
 
     @GetMapping("/summary")
+    @Operation(summary = "요약 통계 조회", description = "가격 이력의 min, max, mean, percentile, 수익률, max drawdown을 계산합니다.")
+    @ApiResponse(
+            responseCode = "200",
+            description = "요약 통계",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = SummaryResponse.class),
+                    examples = @ExampleObject(name = "summary", value = OpenApiExamples.SUMMARY)
+            )
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "잘못된 기간, 날짜 또는 query param",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = ApiErrorResponse.class),
+                    examples = @ExampleObject(name = "invalid-period", value = OpenApiExamples.ERROR_INVALID_STATISTICS_PERIOD)
+            )
+    )
     public Mono<SummaryResponse> summary(
+            @Parameter(description = "자산 심볼", example = "BTC", required = true)
             @RequestParam String symbol,
+            @Parameter(description = "데이터 소스", example = "UPBIT")
             @RequestParam(required = false) String source,
+            @Parameter(description = "기준 통화", example = "KRW")
             @RequestParam(required = false) String quoteCurrency,
+            @Parameter(description = "조회 기간. 예: 30d, 12h, 15m", example = "30d")
             @RequestParam(required = false) String period,
+            @Parameter(description = "명시적 시작 시각, ISO-8601", example = "2026-04-17T10:15:00Z")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
+            @Parameter(description = "명시적 종료 시각, ISO-8601", example = "2026-05-17T10:15:00Z")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to
     ) {
         Instant resolvedTo = to == null ? Instant.now(clock) : to;

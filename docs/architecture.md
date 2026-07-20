@@ -6,11 +6,14 @@
 
 ```text
 [External APIs]
-  Upbit / Gold API / KIS / Alpha Vantage
+  Upbit / Binance / Gold API / KIS / Alpha Vantage / Finnhub
+        |
+        +--> demo profile synthetic data
         |
         v
 [Collectors]
-  CoinCollector / GoldCollector / StockKrCollector / StockUsCollector
+  CoinCollector / BinanceCollector / GoldCollector / StockKrCollector
+  StockUsCollector / FinnhubCollector / DemoAssetCollector
         |
         v
 [Kafka]
@@ -44,7 +47,9 @@
 - [x] `GoldCollector`로 `gold-api.com` 폴링
 - [x] `StockKrCollector`로 한국 주식 수집
 - [x] `StockUsCollector`로 미국 주식 수집
-- [ ] Binance/Finnhub 같은 추가 공급자 연결
+- [x] `BinanceCollector`로 Binance WebSocket 수집 (기본 비활성화)
+- [x] `FinnhubCollector`로 미국 주식 대체 소스 수집 (기본 비활성화)
+- [x] `DemoAssetCollector`로 API 키 없는 합성 데이터 흐름 제공
 
 ### 처리 계층
 
@@ -58,8 +63,14 @@
 
 - [x] REST API로 최신 시세, 이력, 비교, 분석, 알림 제공
 - [x] `GET /api/dashboard/stream` SSE 제공
-- [x] Swagger UI 문서화
+- [x] Swagger UI 문서화와 주요 API 성공/에러 응답 예시
 - [x] React 기반 Dashboard / Analytics 화면
+
+### 배포 계층
+
+- [x] GitHub Actions에서 API/프론트엔드 이미지를 GHCR로 빌드/푸시
+- [x] SSH 기반 운영 서버 Docker Compose 갱신
+- [x] 운영 secret은 서버의 `.env.prod`에서 런타임 환경변수로 주입
 
 ## 저장 구조
 
@@ -80,5 +91,4 @@ Redis에는 최신 가격/분석/알림을 별도 키 prefix로 유지한다.
 
 ## 다음 아키텍처 작업
 
-- [ ] 공급자 추가 시 Collector 추상화 확장
-- [ ] 운영 환경용 배포/설정 분리
+- [ ] Grafana 대시보드 기준 장애 진단 runbook 보강
