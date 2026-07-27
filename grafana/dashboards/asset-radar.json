@@ -185,6 +185,24 @@
           "refId": "A"
         }
       ]
+    },
+    {
+      "title": "Logs — app 에러 (collector/consumer/API)",
+      "type": "logs",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 36 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "wrapLogMessages": true,
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "expr": "{compose_service=\"app\"} |= \"ERROR\"",
+          "refId": "A"
+        }
+      ]
     }
   ],
   "schemaVersion": 39,

@@ -2,6 +2,20 @@
 
 기준일: 2026-04-18
 
+## 진행 현황 (2026-07-27)
+
+- 1~3단계(Loki, Tempo, Alertmanager 도입)는 `docker-compose.yml` 기준으로 구성 완료.
+- "경보 규칙"에 나열된 항목 중 source 수집 정지, collector error, Kafka lag, 분석/알림
+  처리 정지, alert 트리거 비율 이상, API 5xx, API P99, JVM heap은
+  `prometheus/rules/asset-radar-alerts.yml`에 구현됨.
+- "알림 라우팅"의 severity별 Slack/Webhook 라우팅은 `alertmanager/render-config.sh`로 구현됨
+  (`ASSET_RADAR_ALERT_SLACK_WEBHOOK_URL`/`ASSET_RADAR_ALERT_WEBHOOK_URL` 필요, 없으면 no-op).
+- Redis/PostgreSQL 연결 실패 감지는 미구현 — exporter(redis_exporter/postgres_exporter)나
+  R2DBC pool 메트릭 노출이 선행되어야 함. `docs/runbook.md`의 "알려진 갭" 참고.
+- alert별 1차 진단 절차는 `docs/runbook.md`로 별도 정리함.
+- 남은 항목: 실제 Grafana/Prometheus/Loki 화면 캡처(README용). Docker Hub 이미지 pull이
+  가능한 환경에서 진행 필요.
+
 ## 배경
 
 `asset-radar`는 외부 시세 수집, Kafka 기반 파이프라인, 분석/알림 소비자, Redis/PostgreSQL 저장, WebFlux API, SSE 대시보드까지 이어지는 실시간 시스템이다. 현재는 `Prometheus + Grafana`와 Micrometer 커스텀 메트릭이 이미 들어가 있으므로, 다음 단계는 로그, 트레이스, 알림을 연결해 운영 가시성을 완성하는 것이다.

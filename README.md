@@ -385,10 +385,11 @@ GET /api/recommendations/symbol/{symbol}
 - `docs/architecture.md`
 - `docs/data-sources.md`
 - `docs/decision-log.md`
+- `docs/runbook.md`
 - `deploy/README.md`
 - `PROJECT_PLAN.md`
 - `frontend/README.md`
 
 ## 현재 남은 작업
 
-- Grafana 운영 대시보드 스크린샷과 장애 진단 runbook 보강
+- Grafana 운영 대시보드 스크린샷 보강 (alert rule 정의와 진단 runbook은 완료, 캡처만 남음)

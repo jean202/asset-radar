@@ -136,10 +136,11 @@ services:
 
   alertmanager:
     image: prom/alertmanager:v0.28.1
-    command:
-      - "--config.file=/etc/alertmanager/alertmanager.yml"
-      - "--storage.path=/alertmanager"
+    entrypoint: ["/bin/sh", "/etc/alertmanager/render-config.sh"]
+    environment:
+      ASSET_RADAR_ALERT_SLACK_WEBHOOK_URL: ${ASSET_RADAR_ALERT_SLACK_WEBHOOK_URL:-}
+      ASSET_RADAR_ALERT_WEBHOOK_URL: ${ASSET_RADAR_ALERT_WEBHOOK_URL:-}
     volumes:
-      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./alertmanager/render-config.sh:/etc/alertmanager/render-config.sh:ro
     ports:
       - "9093:9093"
