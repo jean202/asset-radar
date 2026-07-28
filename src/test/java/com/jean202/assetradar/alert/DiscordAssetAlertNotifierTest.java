@@ -11,11 +11,15 @@ import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.InetSocketAddress;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.Test;
+import reactor.test.StepVerifier;
 
 class DiscordAssetAlertNotifierTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -68,6 +72,74 @@ class DiscordAssetAlertNotifierTest {
         } finally {
             server.stop(0);
         }
+    }
+
+    @Test
+    void doesNotBlockSubscribingThreadWhileRequestIsInFlight() throws Exception {
+        CountDownLatch release = new CountDownLatch(1);
+        CountDownLatch received = new CountDownLatch(1);
+        HttpServer server = stallingServer("/discord", received, release);
+
+        try {
+            AlertNotifierProperties properties = new AlertNotifierProperties();
+            properties.getDiscord().setEnabled(true);
+            properties.getDiscord().setMinimumSeverity(AlertSeverity.WARN);
+            properties.getDiscord().setTimeout(Duration.ofSeconds(10));
+            properties.getDiscord()
+                    .setWebhookUrl("http://localhost:%d/discord".formatted(server.getAddress().getPort()));
+            DiscordAssetAlertNotifier notifier = new DiscordAssetAlertNotifier(properties, formatter);
+
+            long startedAt = System.nanoTime();
+            notifier.send(alert("WARN")).subscribe(ignored -> { }, error -> { });
+            long elapsedMillis = (System.nanoTime() - startedAt) / 1_000_000;
+
+            assertThat(received.await(5, TimeUnit.SECONDS)).isTrue();
+            assertThat(elapsedMillis).isLessThan(500);
+        } finally {
+            release.countDown();
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void failsWithTimeoutWhenWebhookStalls() throws Exception {
+        CountDownLatch release = new CountDownLatch(1);
+        CountDownLatch received = new CountDownLatch(1);
+        HttpServer server = stallingServer("/discord", received, release);
+
+        try {
+            AlertNotifierProperties properties = new AlertNotifierProperties();
+            properties.getDiscord().setEnabled(true);
+            properties.getDiscord().setMinimumSeverity(AlertSeverity.WARN);
+            properties.getDiscord().setTimeout(Duration.ofMillis(200));
+            properties.getDiscord()
+                    .setWebhookUrl("http://localhost:%d/discord".formatted(server.getAddress().getPort()));
+            DiscordAssetAlertNotifier notifier = new DiscordAssetAlertNotifier(properties, formatter);
+
+            StepVerifier.create(notifier.send(alert("WARN")))
+                    .expectError(TimeoutException.class)
+                    .verify(Duration.ofSeconds(5));
+        } finally {
+            release.countDown();
+            server.stop(0);
+        }
+    }
+
+    private HttpServer stallingServer(String path, CountDownLatch received, CountDownLatch release)
+            throws IOException {
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext(path, exchange -> {
+            received.countDown();
+            try {
+                release.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+            }
+            exchange.sendResponseHeaders(200, -1);
+            exchange.close();
+        });
+        server.start();
+        return server;
     }
 
     private HttpServer server(String path, BlockingQueue<CapturedRequest> requests) throws IOException {

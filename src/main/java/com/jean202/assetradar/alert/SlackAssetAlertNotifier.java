@@ -8,6 +8,7 @@ import java.net.http.HttpClient;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 @Component
 public class SlackAssetAlertNotifier implements AssetAlertNotifier {
@@ -41,8 +42,14 @@ public class SlackAssetAlertNotifier implements AssetAlertNotifier {
             return Mono.empty();
         }
 
-        return Mono.fromRunnable(() -> new SlackChannel(properties.getWebhookUrl(), httpClient)
-                .send(NotifyMessage.text(formatter.format(alert))));
+        // SlackChannel.send performs a blocking HttpClient.send, so it must not run on
+        // the subscriber's thread. boundedElastic keeps the returned Mono non-blocking
+        // for any caller, and the timeout bounds the wait: the underlying HttpClient
+        // only has a connectTimeout, so a stalled webhook would otherwise hang forever.
+        return Mono.<Void>fromRunnable(() -> new SlackChannel(properties.getWebhookUrl(), httpClient)
+                        .send(NotifyMessage.text(formatter.format(alert))))
+                .subscribeOn(Schedulers.boundedElastic())
+                .timeout(properties.getTimeout());
     }
 
     @Override
