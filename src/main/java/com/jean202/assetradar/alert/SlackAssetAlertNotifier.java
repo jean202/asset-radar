@@ -42,14 +42,15 @@ public class SlackAssetAlertNotifier implements AssetAlertNotifier {
             return Mono.empty();
         }
 
-        // SlackChannel.send performs a blocking HttpClient.send, so it must not run on
-        // the subscriber's thread. boundedElastic keeps the returned Mono non-blocking
-        // for any caller, and the timeout bounds the wait: the underlying HttpClient
-        // only has a connectTimeout, so a stalled webhook would otherwise hang forever.
-        return Mono.<Void>fromRunnable(() -> new SlackChannel(properties.getWebhookUrl(), httpClient)
+        // SlackChannel.send blocks, so it must not run on the subscriber's thread:
+        // boundedElastic keeps the returned Mono non-blocking for any caller. The channel
+        // timeout is what actually frees that thread; the Mono-level timeout is only a
+        // backstop, so it is given headroom to let the channel fail first.
+        return Mono.<Void>fromRunnable(() -> new SlackChannel(
+                        properties.getWebhookUrl(), httpClient, properties.getTimeout())
                         .send(NotifyMessage.text(formatter.format(alert))))
                 .subscribeOn(Schedulers.boundedElastic())
-                .timeout(properties.getTimeout());
+                .timeout(properties.getTimeout().multipliedBy(2));
     }
 
     @Override

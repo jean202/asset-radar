@@ -46,13 +46,14 @@ public class DiscordAssetAlertNotifier implements AssetAlertNotifier {
                 "[%s] %s %s/%s".formatted(alert.severity(), alert.source(), alert.symbol(), alert.quoteCurrency()),
                 formatter.format(alert)
         );
-        // DiscordChannel.send performs a blocking HttpClient.send, so it must not run on
-        // the subscriber's thread. boundedElastic keeps the returned Mono non-blocking
-        // for any caller, and the timeout bounds the wait: the underlying HttpClient
-        // only has a connectTimeout, so a stalled webhook would otherwise hang forever.
-        return Mono.<Void>fromRunnable(() -> new DiscordChannel(properties.getWebhookUrl(), httpClient).send(message))
+        // DiscordChannel.send blocks, so it must not run on the subscriber's thread:
+        // boundedElastic keeps the returned Mono non-blocking for any caller. The channel
+        // timeout is what actually frees that thread; the Mono-level timeout is only a
+        // backstop, so it is given headroom to let the channel fail first.
+        return Mono.<Void>fromRunnable(() -> new DiscordChannel(
+                        properties.getWebhookUrl(), httpClient, properties.getTimeout()).send(message))
                 .subscribeOn(Schedulers.boundedElastic())
-                .timeout(properties.getTimeout());
+                .timeout(properties.getTimeout().multipliedBy(2));
     }
 
     @Override

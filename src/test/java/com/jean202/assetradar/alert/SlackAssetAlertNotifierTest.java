@@ -11,13 +11,13 @@ import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.InetSocketAddress;
+import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.Test;
 import reactor.test.StepVerifier;
 
@@ -116,8 +116,13 @@ class SlackAssetAlertNotifierTest {
             properties.getSlack().setWebhookUrl("http://localhost:%d/slack".formatted(server.getAddress().getPort()));
             SlackAssetAlertNotifier notifier = new SlackAssetAlertNotifier(properties, formatter);
 
+            // The channel-level timeout must be what fires, since that is what actually
+            // releases the blocked thread. The Mono-level timeout is only a backstop and
+            // is configured with headroom, so reaching it here would mean the fix regressed.
             StepVerifier.create(notifier.send(alert("WARN")))
-                    .expectError(TimeoutException.class)
+                    .expectErrorSatisfies(error -> assertThat(error)
+                            .isInstanceOf(IllegalStateException.class)
+                            .hasRootCauseInstanceOf(HttpTimeoutException.class))
                     .verify(Duration.ofSeconds(5));
         } finally {
             release.countDown();
