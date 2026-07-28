@@ -200,6 +200,23 @@ flowchart LR
 
 ## 실행
 
+### 사전 준비: GitHub Packages 인증
+
+이 프로젝트는 알림 채널 구현으로 [`webhook-notify`](https://github.com/jean202/webhook-notify)의
+`io.github.jean202:webhook-notify-core`를 사용합니다. 해당 아티팩트는 GitHub Packages에 배포되어 있고,
+GitHub Packages는 public 패키지도 인증을 요구하므로 빌드 전에 토큰이 필요합니다.
+
+`read:packages` 권한이 있는 [Personal Access Token](https://github.com/settings/tokens)을 만든 뒤
+`~/.gradle/gradle.properties`에 추가합니다.
+
+```properties
+gpr.user=<GitHub 사용자명>
+gpr.key=<read:packages 권한 PAT>
+```
+
+환경변수 `GITHUB_ACTOR` / `GITHUB_TOKEN`으로도 대체할 수 있습니다. GitHub Actions에서는 기본
+`GITHUB_TOKEN`이 자동 주입되므로 별도 설정이 필요 없습니다.
+
 ### 로컬 개발
 
 인프라만 Docker로 띄우고 애플리케이션은 로컬에서 실행하는 방식입니다.

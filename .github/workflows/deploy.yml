@@ -64,6 +64,9 @@ jobs:
           tags: |
             ${{ steps.images.outputs.api }}:${{ steps.images.outputs.tag }}
             ${{ steps.images.outputs.api }}:latest
+          secrets: |
+            gpr_user=${{ github.actor }}
+            gpr_token=${{ secrets.GITHUB_TOKEN }}
           cache-from: type=gha,scope=api
           cache-to: type=gha,mode=max,scope=api
 
