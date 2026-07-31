@@ -1,0 +1,56 @@
+# APISIX 스터디용 오버레이.
+#
+# 기존 docker-compose.yml 은 수정하지 않는다. 게이트웨이가 없는 상태와 있는 상태를
+# 언제든 비교할 수 있어야 "게이트웨이 도입 비용"을 측정할 수 있기 때문이다.
+#
+#   # 게이트웨이 없이 (기준선)
+#   docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d
+#
+#   # 게이트웨이 포함
+#   docker compose -f docker-compose.yml -f docker-compose.demo.yml -f docker-compose.apisix.yml up -d
+#
+# 포트: 9080 프록시 / 9180 Admin API / 9091 메트릭(5단계에서 사용)
+# 기존 스택과 충돌하지 않는다. 자세한 실습 절차는 apisix/README.md 참고.
+
+services:
+  etcd:
+    # APISIX 는 설정을 etcd 에 저장하고 watch 한다. 라우트를 바꿔도 리로드/재시작이 없는 이유.
+    #
+    # APISIX 공식 문서와 대부분의 블로그는 bitnami/etcd 를 쓰지만, Bitnami 가 공개
+    # 레지스트리 정책을 바꾸면서 docker.io/bitnami/etcd 의 버전 태그는 더 이상 받아지지
+    # 않는다(2026-07 확인: "no such manifest"). 그래서 etcd 프로젝트 공식 이미지를 쓴다.
+    # 환경변수 대신 플래그로 넘기는 형태라 무엇이 설정되는지가 오히려 더 잘 보인다.
+    image: gcr.io/etcd-development/etcd:v3.5.17
+    command:
+      # 이 이미지의 CMD 가 /usr/local/bin/etcd 이고 ENTRYPOINT 가 없으므로
+      # command 를 덮어쓸 때 실행 파일 경로부터 적어야 한다.
+      - /usr/local/bin/etcd
+      - --name=etcd0
+      - --data-dir=/etcd-data
+      - --listen-client-urls=http://0.0.0.0:2379
+      # APISIX 컨테이너가 이 주소로 접속한다. compose 네트워크의 서비스명이 곧 호스트명.
+      - --advertise-client-urls=http://etcd:2379
+    ports:
+      # etcdctl 로 저장된 설정을 직접 들여다보기 위해 연다. 루프백에만 바인딩.
+      - "127.0.0.1:2379:2379"
+
+  apisix:
+    # 태그 고정 필수. latest 를 쓰면 스터디 노트와 동작이 어긋난다.
+    image: apache/apisix:3.11.0-debian
+    volumes:
+      # config.yaml 은 config-default.yaml 위에 덮어써진다. 즉 여기 적은 것만 "내가 바꾼 값"이다.
+      - ./apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro
+    environment:
+      # 값이 없으면 컨테이너가 아예 안 뜬다(의도된 동작). apisix/README.md 의 생성 방법 참고.
+      APISIX_ADMIN_KEY: ${APISIX_ADMIN_KEY:?APISIX_ADMIN_KEY is required. See apisix/README.md}
+    ports:
+      # 프록시 포트. 클라이언트 트래픽이 들어오는 유일한 입구.
+      - "9080:9080"
+      # Admin API. 설정을 넣는 통로라 외부에 열 이유가 없다 → 루프백 바인딩.
+      - "127.0.0.1:9180:9180"
+      # 프로메테우스 메트릭. 5단계에서 사용.
+      - "127.0.0.1:9091:9091"
+    depends_on:
+      - etcd
+      - app
+    restart: unless-stopped

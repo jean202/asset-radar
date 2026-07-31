@@ -65,3 +65,27 @@
   - `deploy/docker-compose.prod.yml`
   - `deploy/.env.prod.example`
   - `deploy/README.md`
+
+### APISIX 게이트웨이 스터디 오버레이 (1~2단계)
+
+- **완료일**: 2026-07-31
+- **성격**: 학습용 구성. 제품 기능이 아니다.
+- **불변 조건**: `docker-compose.yml`과 애플리케이션 코드는 수정하지 않는다.
+  게이트웨이가 없는 상태와 있는 상태를 비교할 수 있어야 도입 비용을 측정할 수 있기 때문이다.
+- **실행**:
+  - 기준선: `docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d`
+  - 게이트웨이 포함: 위 명령에 `-f docker-compose.apisix.yml` 추가
+- **포트**: 9080 프록시 / 9180 Admin API / 9091 메트릭 / 2379 etcd. 기존 스택과 충돌 없음.
+- **관련 파일**:
+  - `docker-compose.apisix.yml`
+  - `apisix/config.yaml`
+  - `apisix/setup-routes.sh`
+  - `apisix/README.md`
+- **주의**:
+  - `APISIX_ADMIN_KEY`가 없으면 apisix 컨테이너가 뜨지 않는다(의도된 fail-fast).
+  - etcd 이미지는 `gcr.io/etcd-development/etcd`를 쓴다. APISIX 문서가 쓰는
+    `bitnami/etcd`의 버전 태그는 2026-07 기준 docker.io에서 더 이상 받아지지 않는다.
+  - etcd에 볼륨이 없으므로 `down` 하면 라우트가 사라진다. `setup-routes.sh`는
+    그래서 `PUT`으로 멱등하게 작성돼 있다.
+- **다음 단계**: 3단계(SSE 버퍼링) → 4단계(플러그인) → 5단계(관측 연동) →
+  6단계(traffic-split) → 7단계(커스텀 Lua 플러그인). `apisix/README.md` 참고.

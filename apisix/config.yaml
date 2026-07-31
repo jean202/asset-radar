@@ -1,0 +1,64 @@
+# APISIX 설정. 컨테이너 안의 conf/config-default.yaml 위에 병합된다.
+# 여기 적힌 항목만이 "기본값에서 내가 바꾼 것"이다. 기본값이 궁금하면:
+#   docker compose exec apisix cat /usr/local/apisix/conf/config-default.yaml
+#
+# 예: 라우터 구현체(radixtree_uri / radixtree_host_uri 등)가 무엇인지는
+#     문서가 아니라 위 파일의 router.http 값을 근거로 삼는다.
+
+apisix:
+  node_listen: 9080
+
+deployment:
+  # traditional = control plane(설정 관리) + data plane(트래픽 처리)을 한 프로세스에서.
+  # 둘을 분리하려면 role 을 control_plane / data_plane 으로 나눈다.
+  # etcd 없이 파일만으로 돌리는 standalone 모드도 있다:
+  #   role: data_plane + role_data_plane.config_provider: yaml
+  # → 1단계 과제: 두 모드를 다 띄워보고 차이를 노트에 적을 것.
+  role: traditional
+  role_traditional:
+    config_provider: etcd
+
+  admin:
+    admin_listen:
+      ip: 0.0.0.0
+      port: 9180
+    admin_key:
+      # 값은 컨테이너 환경변수에서 주입된다(${{VAR}} 는 APISIX 3.x 의 환경변수 치환 문법).
+      # 문서나 블로그에 나오는 예시 키를 그대로 쓰지 않기 위해 이렇게 뺐다.
+      - name: admin
+        key: ${{APISIX_ADMIN_KEY}}
+        role: admin
+    allow_admin:
+      # 실습 전용. 운영에서는 관리망 CIDR 로 좁힌다.
+      # 지금은 compose 가 9180 을 루프백에만 바인딩해서 실질적으로 로컬만 접근 가능하다.
+      - 0.0.0.0/0
+
+  etcd:
+    host:
+      - "http://etcd:2379"
+    prefix: /apisix
+    timeout: 30
+
+# ── 이후 단계에서 채울 자리 ──────────────────────────────────────────────
+#
+# 3단계(SSE): 전역으로 프록시 버퍼링을 끄는 후보. 범위가 너무 넓다는 게 논점이다.
+#   nginx_config:
+#     http_configuration_snippet: |
+#       proxy_buffering off;
+#
+# 5단계(관측): 메트릭 export 주소. 기본값이 127.0.0.1 이라 그대로 두면
+#              Prometheus 컨테이너가 긁지 못한다.
+#   plugin_attr:
+#     prometheus:
+#       export_addr:
+#         ip: 0.0.0.0
+#         port: 9091
+#     opentelemetry:
+#       collector:
+#         address: tempo:4318
+#       set_ngx_var: true
+#
+# 7단계(커스텀 플러그인): extra_lua_path 로 경로를 추가하고 plugins 목록에 이름을 등록한다.
+#   주의 — plugins 를 쓰는 순간 기본 플러그인 목록 전체를 덮어쓴다.
+#   apisix:
+#     extra_lua_path: "/opt/custom/?.lua"
