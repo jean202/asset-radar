@@ -17,6 +17,25 @@ asset-radar 앞에 Apache APISIX 를 세워보는 학습용 구성입니다.
 
 ## 준비
 
+### 앱 이미지 빌드 전제 조건
+
+`--build` 로 `app` 이미지를 새로 빌드하려면 GitHub Packages 접근이 필요합니다.
+`build.gradle.kts` 가 `io.github.jean202:webhook-notify-core` 를 GitHub Packages 에서 받는데,
+공개 패키지라도 인증을 요구하기 때문입니다. `Dockerfile` 은 이 값을 build secret 으로 받습니다.
+
+```bash
+export GITHUB_ACTOR=<github 계정>
+export GITHUB_TOKEN=<read:packages 권한 토큰>
+docker build --secret id=gpr_user,env=GITHUB_ACTOR --secret id=gpr_token,env=GITHUB_TOKEN -t asset-radar-app .
+```
+
+`docker compose build` 는 이 secret 을 자동으로 넘기지 않으므로, 위 방식으로 이미지를 먼저
+만들어 두고 `--build` 없이 `up -d` 하는 편이 간단합니다. 앱을 호스트에서 직접 실행하는
+`local` 프로파일로 실습해도 게이트웨이 학습에는 아무 영향이 없습니다
+(그때 upstream 노드를 `host.docker.internal:8080` 으로 바꾸면 됩니다).
+
+### Admin API 키
+
 Admin API 키를 직접 생성합니다. 문서나 블로그의 예시 키를 그대로 쓰지 않기 위해
 설정 파일이 아니라 환경변수로 주입합니다.
 
