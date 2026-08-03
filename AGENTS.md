@@ -3,17 +3,42 @@
 
 ## 다음 작업 시작 시 가장 먼저 제안할 것
 
-### Grafana 운영 증거 보강
+### Grafana 운영 화면 실제 캡처
 
-- `Prometheus + Grafana + Loki + Tempo + Alertmanager` 스택은 구성되어 있으므로, 다음 포트폴리오 보강 작업은 운영 화면 캡처와 runbook 정리가 적합하다.
+- Alert rule 보강과 runbook 정리는 끝났으므로(아래 "관측 스택 alert 보강과 운영 runbook" 참고),
+  남은 건 실제로 스택을 띄워 화면을 캡처하는 것뿐이다.
+- **주의**: Docker Hub 레지스트리 egress가 막힌 샌드박스(예: 이 저장소의 Claude Code 원격 세션)에서는
+  `docker compose up`으로 이미지를 pull할 수 없어 캡처가 불가능하다. Docker Hub 접근이 되는
+  환경(로컬 머신 등)에서 진행해야 한다.
 - demo profile로도 데이터가 흐르므로 외부 API 키 없이 Grafana 캡처를 만들 수 있다.
 - 목적: README의 기능 스크린샷 다음 단계로 운영 관측 가능성까지 보여준다.
 - 권장 캡처 후보:
-  1. Grafana dashboard (`http://localhost:3000`) — API latency, collector count, alert metrics
-  2. Prometheus alert rule 화면 (`http://localhost:9090`) — alert rule 로딩 상태
-  3. Loki log query 화면 — `service=asset-radar` 기준 collector/API 로그
+  1. Grafana dashboard (`http://localhost:3000`) — API latency, collector count, alert metrics, Loki 로그 패널
+  2. Prometheus alert rule 화면 (`http://localhost:9090`) — `prometheus/rules/asset-radar-alerts.yml`의 8개 rule 로딩 상태
+  3. Loki log query 화면 — `{compose_service="app"}` 기준 collector/API 로그
+- 캡처 후 `docs/screenshots/`에 추가하고 README `## Screenshots` 아래 운영 관측 섹션을 새로 만들어 삽입한다.
 
 ## 완료된 TODO
+
+### 관측 스택 alert 보강과 운영 runbook
+
+- **완료일**: 2026-07-27
+- **내용**:
+  - Alertmanager가 항상 `dev-null`로만 라우팅되던 문제를 고쳐, `ASSET_RADAR_ALERT_SLACK_WEBHOOK_URL` /
+    `ASSET_RADAR_ALERT_WEBHOOK_URL`이 설정되면 severity별(`warning`/`critical`)로 Slack/Webhook에
+    실제로 전달되게 함. 값이 없으면 기존처럼 no-op으로 동작(로컬 기본값 유지).
+  - `OBSERVABILITY_PLAN.md`에 명시되어 있었지만 빠져 있던 alert rule 4종 추가: API P99 지연,
+    Kafka consumer lag, alert 트리거 비율 이상, JVM heap 사용률.
+  - Grafana 대시보드에 Loki 로그 패널 추가 (`{compose_service="app"} |= "ERROR"`).
+  - Alert별 진단 절차를 담은 운영 runbook 신설.
+  - Redis/PostgreSQL 연결 장애 감지는 exporter 부재로 보류 — `docs/runbook.md`의 "알려진 갭"에 기록.
+- **관련 파일**:
+  - `alertmanager/render-config.sh` (신규, `alertmanager/alertmanager.yml` 대체)
+  - `prometheus/rules/asset-radar-alerts.yml`
+  - `grafana/dashboards/asset-radar.json`
+  - `docker-compose.yml`
+  - `docs/runbook.md` (신규)
+  - `.env.example`
 
 ### README에 동작 스크린샷 추가
 

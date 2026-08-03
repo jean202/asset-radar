@@ -8,6 +8,7 @@ import java.net.http.HttpClient;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 @Component
 public class DiscordAssetAlertNotifier implements AssetAlertNotifier {
@@ -45,7 +46,14 @@ public class DiscordAssetAlertNotifier implements AssetAlertNotifier {
                 "[%s] %s %s/%s".formatted(alert.severity(), alert.source(), alert.symbol(), alert.quoteCurrency()),
                 formatter.format(alert)
         );
-        return Mono.fromRunnable(() -> new DiscordChannel(properties.getWebhookUrl(), httpClient).send(message));
+        // DiscordChannel.send blocks, so it must not run on the subscriber's thread:
+        // boundedElastic keeps the returned Mono non-blocking for any caller. The channel
+        // timeout is what actually frees that thread; the Mono-level timeout is only a
+        // backstop, so it is given headroom to let the channel fail first.
+        return Mono.<Void>fromRunnable(() -> new DiscordChannel(
+                        properties.getWebhookUrl(), httpClient, properties.getTimeout()).send(message))
+                .subscribeOn(Schedulers.boundedElastic())
+                .timeout(properties.getTimeout().multipliedBy(2));
     }
 
     @Override

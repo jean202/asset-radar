@@ -29,3 +29,9 @@
 
 - 결정: 애플리케이션 secret은 Docker 이미지나 GitHub Actions 빌드 환경에 넣지 않고, 운영 서버의 `.env.prod`에서 런타임 환경변수로만 주입한다.
 - 이유: KIS, Alpha Vantage, Finnhub, 알림 webhook, DB 비밀번호가 이미지 레이어나 CI 로그에 남지 않게 하고, 운영 타깃별 값 교체를 배포 워크플로우와 분리하기 위함이다.
+
+## ADR-007
+
+- 결정: `webhook-notify` 의존은 `includeBuild("../webhook-notify")` 복합 빌드를 걷어내고, GitHub Packages에 배포된 `io.github.jean202:webhook-notify-core:0.1.0` 정식 아티팩트로 참조한다.
+- 이유: 복합 빌드는 형제 디렉터리 `../webhook-notify`가 존재하는 로컬 워크스페이스에서만 동작해서, 신규 클론과 CI, Docker 이미지 빌드가 모두 `Included build does not exist`로 실패했다. 실제로 CI는 2026-07-20 이후 계속 red 상태였다. 버전이 박힌 아티팩트로 바꾸면 저장소 하나만 클론해도 빌드가 재현된다.
+- 트레이드오프: GitHub Packages는 public 패키지도 인증을 요구하므로 빌드에 `read:packages` 토큰이 필요해졌다. CI/Actions에서는 기본 `GITHUB_TOKEN`으로 해결되지만, 외부 사용자는 PAT를 만들어야 한다. 익명 접근이 필요해지면 Maven Central로 옮긴다 — 배포 설정에 Central 필수 메타데이터와 서명 경로는 이미 준비해 두었다.
