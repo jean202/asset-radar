@@ -49,8 +49,19 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("io.projectreactor:reactor-test")
     testImplementation("org.springframework.kafka:spring-kafka-test")
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+    testImplementation("org.testcontainers:junit-jupiter")
+    testImplementation("org.testcontainers:kafka")
+    testImplementation("org.testcontainers:postgresql")
+    testImplementation("org.testcontainers:r2dbc")
 }
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+
+    // Docker Engine 29+ 는 MinAPIVersion 1.40 미만 요청을 400으로 거부한다.
+    // docker-java 기본 협상 버전이 그보다 낮아 Testcontainers가 데몬을 못 찾으므로 명시한다.
+    val dockerApiVersion = providers.environmentVariable("DOCKER_API_VERSION").getOrElse("1.44")
+    environment("DOCKER_API_VERSION", dockerApiVersion)
+    systemProperty("api.version", dockerApiVersion)
 }
