@@ -121,13 +121,28 @@ flowchart LR
 ### 분석 화면
 ![애널리틱스 화면 — 가격 추이 차트 및 통계](docs/screenshots/analytics.png)
 
+### 운영 관측
+
+Grafana 대시보드 하나에서 수집 → 분석 → 알림 → API 구간을 순서대로 확인합니다. 아래 화면은 `demo` 프로파일로 실행한 상태이며, 외부 API 키 없이 재현할 수 있습니다.
+
+![Grafana 운영 대시보드 — collector 수집 속도, 분석 처리량, 알림 평가/트리거, API 요청 속도와 P99, JVM heap](docs/screenshots/observability_grafana_dashboard.png)
+
+| Prometheus 알림 규칙 | Loki 로그 조회 |
+|---------------------|----------------|
+| ![Prometheus rule health — asset-radar 알림 규칙 5개 평가 상태](docs/screenshots/observability_prometheus_rules.png) | ![Grafana Explore에서 Loki로 asset-radar 앱 로그 조회](docs/screenshots/observability_loki_logs.png) |
+
+캡처는 alert rule 4종과 Loki 로그 패널이 추가되기 전 상태라 rule 5개 / 패널 10개로 보입니다. 현재 정의는 rule 9개 / 패널 11개입니다.
+
+장애 유형별 진단 절차는 [`docs/runbook.md`](docs/runbook.md)에 정리했습니다.
+
 ## 상태 스냅샷
 
-기준일: 2026-05-17
+기준일: 2026-08-22
 
 - 현재 단계: 백엔드/프론트엔드/관측 스택은 동작 가능한 상태이며, 실행 환경을 `local`, `docker`, `demo`, `prod` 프로파일로 분리했다.
-- 현재 워크트리 기준 포함 기능: 실시간 대시보드, 비교 API, 분석/알림 API, 통계 API, React 대시보드/애널리틱스 화면, API 키 없는 데모 데이터 흐름, Swagger 예시 응답, GHCR 기반 운영 배포 자동화
+- 현재 워크트리 기준 포함 기능: 실시간 대시보드, 비교 API, 분석/알림 API, 통계 API, React 대시보드/애널리틱스 화면, API 키 없는 데모 데이터 흐름, Swagger 예시 응답, GHCR 기반 운영 배포 자동화, Grafana 운영 화면과 장애 진단 runbook
 - 검증 결과: `./gradlew test` 통과. 프론트엔드 변경 시에는 `cd frontend && npm run lint`, `cd frontend && npm run test`, `cd frontend && npm run build`를 함께 수행한다.
+- 관측 스택 검증: `demo` 프로파일 전체 컨테이너 실행 기준으로 Prometheus 타깃 6개 UP, alert rule 5개 평가 정상, Grafana 대시보드 10개 패널 렌더링(이후 추가된 rule 4종·Loki 패널은 미포함), Loki 로그 수집, Tempo span metrics remote write까지 확인했다.
 
 ## 기능별 체크리스트
 
@@ -404,9 +419,13 @@ GET /api/recommendations/symbol/{symbol}
 - `docs/decision-log.md`
 - `docs/runbook.md`
 - `deploy/README.md`
+- `OBSERVABILITY_PLAN.md`
 - `PROJECT_PLAN.md`
 - `frontend/README.md`
 
 ## 현재 남은 작업
 
-- Grafana 운영 대시보드 스크린샷 보강 (alert rule 정의와 진단 runbook은 완료, 캡처만 남음)
+- Kafka consumer lag 메트릭 노출 (`Kafka — Consumer Lag` 패널이 `No data`)
+- `ObservabilityComponentDown` 알림 규칙에 앱 스크레이프 타깃 포함
+- Alertmanager Slack/Webhook 라우팅의 실제 전달 검증
+- 운영 스크린샷 재캡처 (현재 캡처는 alert rule 4종·Loki 로그 패널 추가 전 상태)

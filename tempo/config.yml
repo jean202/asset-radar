@@ -23,6 +23,9 @@ metrics_generator:
   registry:
     external_labels:
       source: tempo
+  # local-blocks processor는 별도의 trace wal 경로를 요구한다.
+  traces_storage:
+    path: /tmp/tempo/generator/traces
   storage:
     path: /tmp/tempo/generator/wal
     remote_write:
