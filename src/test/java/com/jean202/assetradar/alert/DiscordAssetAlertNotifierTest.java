@@ -122,7 +122,7 @@ class DiscordAssetAlertNotifierTest {
             StepVerifier.create(notifier.send(alert("WARN")))
                     .expectErrorSatisfies(error -> assertThat(error)
                             .isInstanceOf(IllegalStateException.class)
-                            .hasRootCauseInstanceOf(HttpTimeoutException.class))
+                            .hasCauseInstanceOf(HttpTimeoutException.class))
                     .verify(Duration.ofSeconds(5));
         } finally {
             release.countDown();
