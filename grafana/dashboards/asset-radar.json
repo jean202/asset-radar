@@ -10,7 +10,7 @@
       "title": "Collector — 수집 속도 (prices/sec by source)",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": { "unit": "ops" },
         "overrides": []
@@ -27,7 +27,7 @@
       "title": "Collector — 에러 (errors/min by source)",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": { "unit": "ops", "color": { "mode": "palette-classic" } },
         "overrides": []
@@ -44,7 +44,7 @@
       "title": "Pipeline — 분석 처리량 (analyses/sec)",
       "type": "stat",
       "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": { "unit": "ops" },
         "overrides": []
@@ -61,7 +61,7 @@
       "title": "Alerts — 평가 vs 트리거",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": { "unit": "short" },
         "overrides": []
@@ -83,7 +83,7 @@
       "title": "Alerts — 누적 발생 수",
       "type": "stat",
       "gridPos": { "h": 4, "w": 6, "x": 6, "y": 8 },
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": { "unit": "short" },
         "overrides": []
@@ -100,7 +100,7 @@
       "title": "API — HTTP 요청 속도 (by URI)",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": { "unit": "reqps" },
         "overrides": []
@@ -117,7 +117,7 @@
       "title": "API — 응답시간 P99 (ms)",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": { "unit": "ms" },
         "overrides": []
@@ -134,7 +134,7 @@
       "title": "JVM — Heap 사용량",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": { "unit": "bytes" },
         "overrides": []
@@ -156,7 +156,7 @@
       "title": "Kafka — Consumer Lag",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": { "unit": "short" },
         "overrides": []
@@ -173,7 +173,7 @@
       "title": "System — CPU 사용률",
       "type": "gauge",
       "gridPos": { "h": 4, "w": 6, "x": 12, "y": 8 },
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": { "unit": "percentunit", "max": 1, "thresholds": { "steps": [{"color":"green","value":null},{"color":"yellow","value":0.7},{"color":"red","value":0.9}] } },
         "overrides": []
