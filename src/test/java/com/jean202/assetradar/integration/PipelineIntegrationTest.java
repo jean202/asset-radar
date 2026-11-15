@@ -17,23 +17,29 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.r2dbc.core.DatabaseClient;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.kafka.ConfluentKafkaContainer;
+import org.testcontainers.utility.DockerImageName;
 
 /**
- * E2E 통합 테스트: docker-compose로 Kafka/Redis/PostgreSQL을 띄운 뒤 실행.
+ * E2E 통합 테스트: Kafka/Redis/PostgreSQL을 Testcontainers로 띄우고 애플리케이션 컨텍스트를 함께 올린다.
  *
- * 실행 방법:
- *   docker compose up -d
- *   INTEGRATION_TEST=true ./gradlew test --tests "*PipelineIntegrationTest"
- *   docker compose down
+ * 외부 API 수집기는 전부 꺼서 네트워크 의존성 없이 `./gradlew test`만으로 실행된다.
+ * 스키마는 R2dbcSchemaConfig의 ConnectionFactoryInitializer가 기동 시 적용한다.
  */
+@Testcontainers
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
@@ -46,8 +52,33 @@ import org.springframework.test.web.reactive.server.WebTestClient;
         }
 )
 @AutoConfigureWebTestClient
-@EnabledIfEnvironmentVariable(named = "INTEGRATION_TEST", matches = "true")
 class PipelineIntegrationTest {
+
+    @Container
+    static final ConfluentKafkaContainer KAFKA =
+            new ConfluentKafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:8.1.2"));
+
+    @Container
+    static final GenericContainer<?> REDIS =
+            new GenericContainer<>(DockerImageName.parse("redis:7-alpine")).withExposedPorts(6379);
+
+    @Container
+    static final PostgreSQLContainer<?> POSTGRES =
+            new PostgreSQLContainer<>(DockerImageName.parse("postgres:16-alpine"))
+                    .withDatabaseName("asset_radar")
+                    .withUsername("asset_radar")
+                    .withPassword("asset_radar");
+
+    @DynamicPropertySource
+    static void containerProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.kafka.bootstrap-servers", KAFKA::getBootstrapServers);
+        registry.add("spring.data.redis.host", REDIS::getHost);
+        registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379));
+        registry.add("spring.r2dbc.url", () -> "r2dbc:postgresql://%s:%d/%s".formatted(
+                POSTGRES.getHost(), POSTGRES.getFirstMappedPort(), POSTGRES.getDatabaseName()));
+        registry.add("spring.r2dbc.username", POSTGRES::getUsername);
+        registry.add("spring.r2dbc.password", POSTGRES::getPassword);
+    }
 
     @Autowired
     private KafkaTemplate<String, AssetPrice> kafkaTemplate;
@@ -85,7 +116,7 @@ class PipelineIntegrationTest {
         try (KafkaConsumer<String, String> consumer = createTestConsumer()) {
             consumer.subscribe(List.of(pipelineProperties.getKafkaTopic()));
             List<String> received = new ArrayList<>();
-            long deadline = System.currentTimeMillis() + 10_000;
+            long deadline = System.currentTimeMillis() + 20_000;
             while (received.isEmpty() && System.currentTimeMillis() < deadline) {
                 ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(500));
                 records.forEach(record -> received.add(record.value()));
@@ -161,7 +192,7 @@ class PipelineIntegrationTest {
 
     private KafkaConsumer<String, String> createTestConsumer() {
         var props = new java.util.Properties();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.getBootstrapServers());
         props.put(ConsumerConfig.GROUP_ID_CONFIG, "test-verification-" + System.currentTimeMillis());
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
